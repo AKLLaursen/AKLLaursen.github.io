@@ -1,0 +1,420 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>Econ and Machine Learning - Andreas Keller Leth Laursen</title>
+        <meta name="description" content="Personal web page of Andreas Keller Leth Laursen with info and a weblog.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="alternate" type="application/rss+xml" title="Blog posts" href="/feeds/posts/" >
+
+        <link rel="apple-touch-icon" href="apple-touch-icon.png">
+        <!-- Place favicon.ico in the root directory -->
+        <link rel="stylesheet" href="/assets/css/styles.css">
+    </head>
+    <body>
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <div class="jumbotron">
+            <div class="container">
+                <h1 id="headline">Econ and Machine Learning</h1>
+                <p>Andreas Keller Leth Laursen</p>
+            </div>      
+        </div>
+
+        <div class="masthead">
+            <div class="container">
+                <nav>
+    <ul class="nav nav-justified span8">
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    Weblog
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/about.html">
+                    About
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/projects.html">
+                    Projects
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/cv.html">
+                    CV
+                </a>
+            </li>
+        
+    </ul>
+</nav>
+            </div>          
+        </div>
+
+        <div class="blog">
+            <div class="container">
+                <div class="row">
+
+                    <div class="col-lg-8 blog-main">
+                        <h1>Presenting R With 5 Examples</h1>
+
+<p>
+    10 Mar 2016
+    
+    
+        - <a href="/authors/andreas.html">Andreas Keller Leth Laursen</a>
+    
+</p>
+
+<p>Yesterday, I finished hosting a short two-day workshop focused on <a href="https://www.r-project.org/">R</a> and <a href="https://www.rstudio.com/">RStudio</a>, which I had prepared for my coworkers at my <a href="http://www.nationalbanken.dk/en/about_danmarks_nationalbank/organisation/Pages/Statistics.aspx">job</a>. It was a great experience with very positive feedback from my colleagues, and something I look forward to repeating.</p>
+
+<p>It is no secret that I am very much a proponent of using R, not only for doing statistical analysis, but for doing everything in, what one could label the statistics “stack.” The statistics stack being a representation of everything a skilled statistician or data scientist needs to be able to do. In my mind, one can partition the statistics stack into:</p>
+
+<ol>
+  <li>Reading data, be it from local files (csv, excel, sas, etc.), a database (SQL, NoSQL, etc.), online sources (Quandl,  web scraping, online APIs, etc.) or something else.</li>
+  <li>The transformation of data, popular known as data munging or data wrangling.</li>
+  <li>Modeling data using both tried and tested models as well as the latest cutting edge models developed by eg. academic researchers.</li>
+  <li>Visualising data.</li>
+  <li>Sharing the data using dynamic reporting or shared dashboards.</li>
+</ol>
+
+<p>When I made the presentation for the workshop, I decided that I wanted to start the first session, an introduction to R, by giving a small example that covers all aforementioned 5 points. The point was to showcase how it is possible to do everything in R and more importantly, how easy it is. Visually in a presentation, I think that it works very well to showcase ease of use, by showing small code snippets and the respective outputs of these snippets. The following examples are what I choose in order to cover the five points.</p>
+
+<p>For showcasing how to read data into R, I call two time series containing the daily historical open, high, low and close prices as well as the volume of the Apple and Microsoft stocks. I do this using the <a href="https://www.quandl.com/tools/r">Quandl package</a>, and do a bit of fiddling with the data using <a href="https://github.com/hadley/dplyr">dplyr</a>. The code is given below.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+</span><span class="n">library</span><span class="p">(</span><span class="n">Quandl</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+  </span><span class="n">apple</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"WIKI/AAPL"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Apple"</span><span class="p">),</span><span class="w">
+  </span><span class="n">microsoft</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"WIKI/MSFT"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Microsoft"</span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">bind_rows</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Open</span><span class="p">,</span><span class="w"> </span><span class="n">High</span><span class="p">,</span><span class="w"> </span><span class="n">Low</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">Volume</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">arrange</span><span class="p">(</span><span class="n">Date</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">desc</span><span class="p">())</span><span class="w">
+
+</span><span class="n">head</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Here the sharp minded reader will notice that I have employed the <a href="https://cran.r-project.org/web/packages/magrittr/index.html">magrittr</a> forward pibe operator as well. The output of running the code is displayed below.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: local data frame [6 x 7]
+
+        Date  Open    High   Low Close   Volume      Name
+      (date) (dbl)   (dbl) (dbl) (dbl)    (dbl)     (chr)
+1 2016-02-26 97.20 98.0237 96.58 96.91 28691422     Apple
+2 2016-02-26 52.60 52.6800 51.10 51.30 35687833 Microsoft
+3 2016-02-25 96.05 96.7600 95.25 96.76 27217966     Apple
+4 2016-02-25 51.73 52.1000 50.61 52.10 26537823 Microsoft
+5 2016-02-24 93.98 96.3800 93.32 96.10 35824629     Apple
+6 2016-02-24 50.69 51.5000 50.20 51.36 31825224 Microsoft
+</code></pre></div></div>
+
+<p>To showcase data munging, I give a small example of how descriptive statistics can be computed using <a href="https://github.com/hadley/dplyr">dplyr</a>	.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">moments</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">group_by</span><span class="p">(</span><span class="n">Name</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">summarise</span><span class="p">(</span><span class="n">Mean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">StandardDeviation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sd</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">Maximum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">max</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">Minimum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">min</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">Skewness</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">skewness</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">Kurtosis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">kurtosis</span><span class="p">(</span><span class="n">Close</span><span class="p">))</span><span class="w">
+			
+</span></code></pre></div></div>
+
+<p>Yielding the output given below.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: local data frame [2 x 7]
+
+       Name     Mean StandardDeviation Maximum Minimum  Skewness kurtosis
+      (chr)    (dbl)             (dbl)   (dbl)   (dbl)     (dbl)    (dbl)
+1     Apple 99.22821         138.53090  702.10   11.00 2.4106307 8.003144
+2 Microsoft 59.35221          33.44367  179.94   15.15 0.8116662 2.829117
+</code></pre></div></div>
+
+<p>For modeling, I choose to give the simplest example possible: How to run a linear regression model in R. Here I also used <a href="http://vita.had.co.nz/papers/tidy-data.html">tidyr</a> to show how to pivot data in R.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">tidyr</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">spread</span><span class="p">(</span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">filter</span><span class="p">(</span><span class="n">Date</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="s2">"1990-01-01"</span><span class="p">,</span><span class="w"> </span><span class="n">Date</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="s2">"2014-01-01"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">lm</span><span class="p">(</span><span class="n">Apple</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">Microsoft</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">.</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">summary</span><span class="p">()</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Of course this model makes little sense considering the data, but that is not the point. Here <code class="highlighter-rouge">summary()</code> exemplifies how easy it is to obtain the standard statistics, you would want from a model fit, as seen from the output below.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Call:
+lm(formula = Apple ~ Microsoft, data = .)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-170.30  -90.12  -29.63   32.98  532.78 
+
+Coefficients:
+             Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 226.43396    3.38662   66.86   &lt;2e-16 ***
+Microsoft    -1.83794    0.04811  -38.20   &lt;2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 134.6 on 6047 degrees of freedom
+Multiple R-squared:  0.1944,	Adjusted R-squared:  0.1943 
+F-statistic:  1460 on 1 and 6047 DF,  p-value: &lt; 2.2e-16
+</code></pre></div></div>
+
+<p>For visualisation of data, I choose the simplest example possible using the definite graphics library in R, <a href="http://ggplot2.org/">ggplot2</a>.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">ggplot2</span><span class="p">)</span><span class="w">
+
+</span><span class="n">qplot</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">color</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">geom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"line"</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Showing how beautiful ggplot2 graphs are even when using the standard unaltered theme.</p>
+
+<p><img src="https://dl.dropboxusercontent.com/s/wrxxef4ff7gskcd/apple-microsoft.svg" alt="Plot of Apple and Microsoft daily stock prices" /></p>
+
+<p>Finally, I turned to sharing the analysis of the data, first by dynamic reporting using <a href="http://rmarkdown.rstudio.com/">rmarkdown</a>. Here I show the R Markdown document.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">---</span><span class="w">
+</span><span class="n">title</span><span class="o">:</span><span class="w"> </span><span class="s2">"Example of Dynamic Reporting"</span><span class="w">
+</span><span class="n">output</span><span class="o">:</span><span class="w">
+  </span><span class="n">pdf_document</span><span class="w">
+</span><span class="o">---</span><span class="w">
+
+</span><span class="c1"># Plot of Apple and Microsoft</span><span class="w">
+  
+</span><span class="n">Here</span><span class="w"> </span><span class="n">we</span><span class="w"> </span><span class="n">plot</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">closing</span><span class="w"> </span><span class="n">prices</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Apple</span><span class="w"> </span><span class="n">and</span><span class="w"> </span><span class="n">Microsoft</span><span class="w"> </span><span class="k">for</span><span class="w"> 
+</span><span class="o">**</span><span class="n">`r data %&gt;% filter(Name == "Apple") %$% Date %&gt;% min()`</span><span class="o">**</span><span class="w"> </span><span class="n">to</span><span class="w"> 
+</span><span class="o">**</span><span class="n">`r data %&gt;% filter(Name == "Microsoft") %$% Date %&gt;% max()`</span><span class="o">**</span><span class="w"> </span><span class="n">and</span><span class="w"> 
+</span><span class="o">**</span><span class="n">`r data %&gt;% filter(Name == "Apple") %$% Date %&gt;% min()`</span><span class="o">**</span><span class="w"> </span><span class="n">to</span><span class="w"> 
+</span><span class="o">**</span><span class="n">`r data %&gt;% filter(Name == "Microsoft") %$% Date %&gt;% max()`</span><span class="o">**</span><span class="w"> </span><span class="n">respectively.</span><span class="w">
+
+</span><span class="err">``</span><span class="n">`{r, echo = FALSE, fig.width = 10, fig.height = 7.5}
+qplot(x = Date, y = Close, data = data,
+      color = Name, geom = "line")
+    `</span><span class="err">``</span><span class="w">
+</span></code></pre></div></div>
+
+<p>I also present the call of the rendering function.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">rmarkdown</span><span class="p">)</span><span class="w">
+
+</span><span class="n">render</span><span class="p">(</span><span class="s2">"stock-example.rmd"</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Yielding the pdf file that can be found <a href="https://www.dropbox.com/s/xed2g68myb1f532/stock-example.pdf?dl=0">here</a>, where the dynamic in-line text has been bolded.</p>
+
+<p>Finally, I present a <a href="https://www.rstudio.com/products/shiny/">Shiny</a> app, showcasing an implementation of the <a href="http://www.highcharts.com/">Highcharts</a> interavtive JavaScript charts in addition to the standard ggplot2 graph. The Highcharts implementation was just a quick hack based on my previous experience working in Highcharts, and won’t be presented here.</p>
+
+<p>Instead I present the ui.R file.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">dashboardPage</span><span class="p">(</span><span class="w">
+  </span><span class="n">dashboardHeader</span><span class="p">(</span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Aktie app"</span><span class="p">),</span><span class="w">
+  </span><span class="n">dashboardSidebar</span><span class="p">(</span><span class="w">
+    </span><span class="n">sidebarMenu</span><span class="p">(</span><span class="w">
+      
+      </span><span class="n">menuItem</span><span class="p">(</span><span class="s2">"R graphics"</span><span class="p">,</span><span class="w">
+               </span><span class="n">tabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"r-graphics"</span><span class="p">,</span><span class="w">
+               </span><span class="n">icon</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">icon</span><span class="p">(</span><span class="s2">"dashboard"</span><span class="p">)),</span><span class="w">
+      </span><span class="n">menuItem</span><span class="p">(</span><span class="s2">"Highchart Graphics"</span><span class="p">,</span><span class="w">
+               </span><span class="n">tabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"highchart-graphics"</span><span class="p">,</span><span class="w">
+               </span><span class="n">icon</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">icon</span><span class="p">(</span><span class="s2">"th"</span><span class="p">)))</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+  </span><span class="n">dashboardBody</span><span class="p">(</span><span class="w">
+    
+    </span><span class="n">singleton</span><span class="p">(</span><span class="n">tags</span><span class="o">$</span><span class="n">head</span><span class="p">(</span><span class="n">tags</span><span class="o">$</span><span class="n">script</span><span class="p">(</span><span class="w">
+      </span><span class="n">src</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://code.highcharts.com/stock/highstock.js"</span><span class="p">))),</span><span class="w">
+    </span><span class="n">singleton</span><span class="p">(</span><span class="n">tags</span><span class="o">$</span><span class="n">head</span><span class="p">(</span><span class="n">tags</span><span class="o">$</span><span class="n">script</span><span class="p">(</span><span class="w">
+      </span><span class="n">src</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://code.highcharts.com/stock/1.2.5/modules/exporting.js"</span><span class="p">))),</span><span class="w">
+    
+    </span><span class="n">tabItems</span><span class="p">(</span><span class="w">
+      
+      </span><span class="n">tabItem</span><span class="p">(</span><span class="n">tabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"r-graphics"</span><span class="p">,</span><span class="w">
+              </span><span class="n">fluidRow</span><span class="p">(</span><span class="w">
+                </span><span class="n">h1</span><span class="p">(</span><span class="s2">"Stock app with ggplot2"</span><span class="p">,</span><span class="w"> </span><span class="n">align</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"center"</span><span class="p">),</span><span class="w">
+                </span><span class="n">br</span><span class="p">(),</span><span class="w">
+                </span><span class="n">column</span><span class="p">(</span><span class="m">4</span><span class="p">,</span><span class="w">
+                       </span><span class="n">textInput</span><span class="p">(</span><span class="n">inputId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"in_symbol"</span><span class="p">,</span><span class="w">
+                                 </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Symbol"</span><span class="p">,</span><span class="w">
+                                 </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"AAPL"</span><span class="p">),</span><span class="w">
+                       </span><span class="n">dateRangeInput</span><span class="p">(</span><span class="n">inputId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"in_dates"</span><span class="p">,</span><span class="w"> 
+                                      </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Date range"</span><span class="p">,</span><span class="w">
+                                      </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1997-02-01"</span><span class="p">,</span><span class="w"> 
+                                      </span><span class="n">end</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">as.character</span><span class="p">(</span><span class="n">Sys.Date</span><span class="p">())),</span><span class="w">
+                       </span><span class="n">checkboxInput</span><span class="p">(</span><span class="s2">"in_log"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Plot y axen på en log skala"</span><span class="p">,</span><span class="w"> 
+                                     </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)),</span><span class="w">
+                </span><span class="n">column</span><span class="p">(</span><span class="m">8</span><span class="p">,</span><span class="w">
+                       </span><span class="n">plotOutput</span><span class="p">(</span><span class="s2">"stock_gg"</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">250</span><span class="p">))</span><span class="w">
+                </span><span class="p">)),</span><span class="w">
+      
+      </span><span class="n">tabItem</span><span class="p">(</span><span class="n">tabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"highchart-graphics"</span><span class="p">,</span><span class="w">
+              </span><span class="n">fluidRow</span><span class="p">(</span><span class="w">
+                </span><span class="n">h1</span><span class="p">(</span><span class="s2">"Stock app with ggplot2"</span><span class="p">,</span><span class="w"> </span><span class="n">align</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"center"</span><span class="p">),</span><span class="w">
+                </span><span class="n">br</span><span class="p">(),</span><span class="w">
+                </span><span class="n">column</span><span class="p">(</span><span class="m">3</span><span class="p">,</span><span class="w">
+                       </span><span class="n">textInput</span><span class="p">(</span><span class="n">inputId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"in_symbol"</span><span class="p">,</span><span class="w">
+                                 </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Symbol"</span><span class="p">,</span><span class="w">
+                                 </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"AAPL"</span><span class="p">),</span><span class="w">
+                       </span><span class="n">dateRangeInput</span><span class="p">(</span><span class="n">inputId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"in_dates"</span><span class="p">,</span><span class="w"> 
+                                      </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Date range"</span><span class="p">,</span><span class="w">
+                                      </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1997-02-01"</span><span class="p">,</span><span class="w"> 
+                                      </span><span class="n">end</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">as.character</span><span class="p">(</span><span class="n">Sys.Date</span><span class="p">()))),</span><span class="w">
+                </span><span class="n">column</span><span class="p">(</span><span class="m">9</span><span class="p">,</span><span class="w">
+                       </span><span class="n">htmlOutput</span><span class="p">(</span><span class="s2">"stock_hc"</span><span class="p">))))</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>And the server.R file.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">shinyServer</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="n">data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">reactive</span><span class="p">({</span><span class="w">
+    </span><span class="n">Quandl</span><span class="p">(</span><span class="n">paste0</span><span class="p">(</span><span class="s2">"WIKI/"</span><span class="p">,</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_symbol</span><span class="p">),</span><span class="w">
+           </span><span class="n">start_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_dates</span><span class="p">[</span><span class="m">1</span><span class="p">],</span><span class="w">
+           </span><span class="n">end_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_dates</span><span class="p">[</span><span class="m">2</span><span class="p">])</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_symbol</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Open</span><span class="p">,</span><span class="w"> </span><span class="n">High</span><span class="p">,</span><span class="w"> </span><span class="n">Low</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">Volume</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">)</span><span class="w">
+    
+  </span><span class="p">})</span><span class="w">
+  
+  </span><span class="n">output</span><span class="o">$</span><span class="n">stock_gg</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderPlot</span><span class="p">({</span><span class="w">
+    </span><span class="n">qplot</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">color</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">geom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"line"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+      </span><span class="n">`+`</span><span class="p">(</span><span class="n">.</span><span class="p">,</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">input</span><span class="o">$</span><span class="n">in_log</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span><span class="w"> </span><span class="n">scale_y_log10</span><span class="p">())</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+  
+  </span><span class="n">output</span><span class="o">$</span><span class="n">stock_hc</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderList</span><span class="p">({</span><span class="w">
+    </span><span class="n">highchart_line_chart</span><span class="p">(</span><span class="n">data</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                           </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                           </span><span class="n">mutate</span><span class="p">(</span><span class="n">Date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">as.integer</span><span class="p">(</span><span class="n">as.POSIXct</span><span class="p">(</span><span class="n">Date</span><span class="p">))</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">1000</span><span class="p">))</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+
+</span><span class="p">})</span><span class="w">
+</span></code></pre></div></div>
+
+<p>I’ll add a link to the app running from my server at <a href="https://www.digitalocean.com/">DigitalOcean</a>, but for now, I present the app as two static images.</p>
+
+<p><img src="https://dl.dropboxusercontent.com/s/50ud6ruy8xprmzn/stock-app-gg.png" alt="Shiny app example with ggplot2" /></p>
+
+<p><img src="https://dl.dropboxusercontent.com/s/bauvxzqtbjap5a6/stock-app-hc.png" alt="Shiny app example with Highcharts" /></p>
+
+<p>Overall I am very happy with these small examples, and the fact that it only took very limited time to make.</p>
+
+                    </div>
+
+                    <div class="col-lg-3 col-md-offset-1 blog-sidebar">
+                        <div class="sidebar-module sidebar-module-inset about">
+                            <h4>Introduction</h4>
+                            <p>I am <a href="/about/">Andreas</a>: Machine learning enthusiast, MLOps devotee, tech addict and all-round geek.</p>
+                        </div>
+                        <div class="sidebar-module search">
+                            <form action="/search" method="GET">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Search" id="inputGroup"/>
+                                        <span class="input-group-addon">
+                                            <i class="fa fa-search"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="sidebar-module archive">
+                            <h4>Archives</h4>
+                            <h5>2016</h5>
+                            <ul>
+                                <li>
+                                    <a href="/2016/02/">
+                                        February
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/03/">
+                                        Marts
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/04/">
+                                        April
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/05/">
+                                        May
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/12/">
+                                        December
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="sidebar-module contact">
+                            <h4>Get at me</h4>
+                            <ul>
+                                <li>
+                                    <a href="/feeds/posts/">
+                                        RSS Feed
+                                    </a>
+                                </li>
+                                <li>
+                                    <p>
+                                        Weblog Archives
+                                    </p>
+                                </li>
+                                <li>
+                                    <a href="https://twitter.com/Andreas_Keller">
+                                        Twitter
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://github.com/AKLLaursen/">
+                                        Github
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://dk.linkedin.com/in/andreas-keller-leth-laursen-40327b32">
+                                        LinkedIn
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="mailto:andreas.keller@gmail.com">
+                                        E-mail
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+                    
+        <div class="container footer">
+            <div class="row">
+                <div class="span12">
+                    <p>
+                        Copyright &copy; Andreas Keller Leth Laursen 2015 - 2020
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

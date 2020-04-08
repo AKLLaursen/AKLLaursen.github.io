@@ -1,0 +1,11 @@
+<nav>
+    <ul class="nav nav-justified span8">
+        {% for item in site.data.navigation %}
+            <li class="nav-item">
+                <a {% if page.url == item.link %}class="nav-link active"{% else %}class="nav-link"{% endif %} href="{{ item.link }}">
+                    {{ item.name }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>

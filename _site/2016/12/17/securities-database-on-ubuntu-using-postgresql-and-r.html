@@ -1,0 +1,725 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>Econ and Machine Learning - Andreas Keller Leth Laursen</title>
+        <meta name="description" content="Personal web page of Andreas Keller Leth Laursen with info and a weblog.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="alternate" type="application/rss+xml" title="Blog posts" href="/feeds/posts/" >
+
+        <link rel="apple-touch-icon" href="apple-touch-icon.png">
+        <!-- Place favicon.ico in the root directory -->
+        <link rel="stylesheet" href="/assets/css/styles.css">
+    </head>
+    <body>
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <div class="jumbotron">
+            <div class="container">
+                <h1 id="headline">Econ and Machine Learning</h1>
+                <p>Andreas Keller Leth Laursen</p>
+            </div>      
+        </div>
+
+        <div class="masthead">
+            <div class="container">
+                <nav>
+    <ul class="nav nav-justified span8">
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    Weblog
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/about.html">
+                    About
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/projects.html">
+                    Projects
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/cv.html">
+                    CV
+                </a>
+            </li>
+        
+    </ul>
+</nav>
+            </div>          
+        </div>
+
+        <div class="blog">
+            <div class="container">
+                <div class="row">
+
+                    <div class="col-lg-8 blog-main">
+                        <h1>Securities Database On Ubuntu Using Postgresql And R</h1>
+
+<p>
+    17 Dec 2016
+    
+    
+        - <a href="/authors/andreas.html">Andreas Keller Leth Laursen</a>
+    
+</p>
+
+<p>For various purposes, I have been wanting to set up a database with the aim of hosting securities data on my <a href="https://www.digitalocean.com/">server</a> for some time now. I thought that I would document the process as I went along, such that it would be easy to do again, should I ever need to. Further, it might be both interesting and useful for other people.</p>
+
+<p>An easy accessible database is very useful if you want to check the odd model, theory or just want to do a quick visualisation. Accessing services such as <a href="https://www.quandl.com/">Quandl</a> can quickly get very time consuming, once you need a large number of time series.</p>
+
+<p>As for the specific database, a number of options is available, but really the choice boils down to either a <a href="https://en.wikipedia.org/wiki/Relational_database">relational database</a> (<a href="https://www.microsoft.com/en-us/server-cloud/">Microsoft SQL Server</a>, <a href="https://www.oracle.com/database/index.html">Oracle</a>, <a href="https://www.mysql.com/">MySQL</a>, <a href="http://www.postgresql.org/">Postgresql</a>) or a <a href="https://en.wikipedia.org/wiki/NoSQL">NoSQL database</a> (<a href="https://www.mongodb.com/">MongoDB</a>, <a href="http://couchdb.apache.org/">CouchDB</a>, <a href="http://redis.io/">Redis</a>). Being very familiar with relational databases in general and <a href="https://en.wikipedia.org/wiki/SQL">SQL</a> in particular, this is a natural choice for me. I go with Postgresql as 1) it is free and open source and 2) I am already familiar with it as this site, <a href="www.akll.io">akll.io</a>, is built using Postgresql through <a href="https://www.djangoproject.com/">Django</a>.</p>
+
+<h2 id="setting-up-the-postgresql-database">Setting Up the Postgresql Database</h2>
+
+<p>The database will be hosted on a <a href="http://www.ubuntu.com/server">Ubuntu Server 14.04</a> platform. I have still to migrate the server to 16.04, even though Digital Ocean has made it available. Postgresql is ridiculously easy to set up. To install SSH into the server and run.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get update
+sudo apt-get install postgresql postgresql-contrib
+</code></pre></div></div>
+
+<p>The <a href="http://www.postgresql.org/docs/9.1/static/contrib.html">contrib package</a> provides porting tools, analysis utilities, and plug-in features that are not part of the core PostgreSQL system. As part of the installation, a user account called <code class="highlighter-rouge">postgres</code> is created. This user can be used to check that Postgres is installed and working as intended.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo -i -u postgres
+psql
+
+psql (9.4.5)
+Type "help" for help.
+
+\q
+</code></pre></div></div>
+
+<p>Next up is creating a new role. One might want to associate an existing account with the given role, or one might want to create a new account. At any rate the role is assigned by entering the following using the <code class="highlighter-rouge">postgres</code> account.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createuser --interactive
+Enter name of role to add: andreas   
+Shall the new role be a superuser? (y/n) y
+</code></pre></div></div>
+
+<p>Here I choose to be a superuser in order to have all privileges. Each user must also be associated with a database of the same name. It can be created by entering.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createdb andreas
+</code></pre></div></div>
+
+<p>Thus the <code class="highlighter-rouge">psql</code> command can be invoked as the given user (in my case andreas). That’s it for setting up the server. Of course there’s a lot more to relational database administration, but as this is a small server only accessed by one person, there is no reason to get fancy with user rights and restrictions.</p>
+
+<p>We can then create and access the actual securities database by running the following commands in the terminal. The standard in postgreql is to use all lower-case names, however due to problems with RODBC, I had to have the database name be capitalized. I have no idea as to why.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createdb Securities
+psql Securities
+</code></pre></div></div>
+
+<p>Next, it is time to set up the database. In this post I will cover how to set up equities in the <a href="https://www.quantstart.com/articles/Securities-Master-Database-with-MySQL-and-Python">style</a> of Michael Halls-Moore of <a href="https://www.quantstart.com/">QuantStart</a>. I will however append a bit as I go along. Thus, we will be creating 4 simple tables:</p>
+
+<ul>
+  <li>exchange: The exchanges to obtain prices from - Dimensional table.</li>
+  <li>data_provider: The providers of the data - Dimensional table.</li>
+  <li>symbol: The ticker symbols - Dimensional table.</li>
+  <li>daily_price: The actual prices - Fact table.</li>
+</ul>
+
+<p>First I create an equity schema.</p>
+
+<pre><code class="language-SQL">create schema equities;
+</code></pre>
+
+<p>And then I build the tables, starting with the exchange table and then building the data_provider, symbol and daily_price tables.</p>
+
+<pre><code class="language-SQL">create table equities.exchange (
+  id_exchange serial not null primary key,
+  abbreviation varchar(32) not null,
+  name varchar(255) not null,
+  city varchar(255) null,
+  country varchar(255) null,
+  currency varchar(64) null,
+  timezone_offset varchar(6) null,
+  created_datetime timestamp not null,
+  last_updated_datetime timestamp not null
+);
+
+create table equities.data_vendor (
+  id_data_vendor serial not null primary key,
+  name varchar(64) not null,
+  website_url varchar(255) null,
+  support_email varchar(255) null,
+  created_datetime timestamp not null,
+  last_updated_datetime timestamp not null
+);
+
+create table equities.symbol (
+  id_symbol serial not null primary key,
+  id_exchange serial not null references equities.exchange(id_exchange),
+  ticker varchar(32) not null,
+  instrument varchar(64) not null,
+  name varchar(255) null,
+  sector varchar(255) null,
+  currency varchar(32) null,
+  created_datetime timestamp not null,
+  last_updated_datetime timestamp not null
+);
+
+create table equities.daily_price (
+  id_daily_price serial not null primary key,
+  id_data_vendor serial not null references equities.data_vendor(id_data_vendor),
+  id_symbol serial not null references equities.symbol(id_symbol),
+  date timestamp not null,
+  created_datetime timestamp not null,
+  last_updated_datetime timestamp not null,
+  open decimal(19, 4) null,
+  high decimal(19, 4) null,
+  low decimal(19, 4) null,
+  close decimal(19, 4) null,
+  adj_close decimal(19, 4) null,
+  volume bigint null
+);
+
+</code></pre>
+
+<p>Note the use of foreign keys employed to connect dimensions to the fact table through their respective primary keys.</p>
+
+<h2 id="connect-to-the-postgresql-database-using-r">Connect to the Postgresql Database Using R</h2>
+
+<p>In R it is easy to connect to a variety of relational databases using the <a href="https://en.wikipedia.org/wiki/Open_Database_Connectivity">ODBC</a> database interface <a href="https://cran.r-project.org/web/packages/RODBC/index.html">RODBC</a>. However, setting up ODBC on a Ubuntu server is unfortunately quite a hassle. First we need to install the unixodbc and odbc-postgresql packages, which installs an open source implementation of the ODBC API and the official PostgreSQL ODBC driver. As the versions of these packages hosted in Ubuntu’s package manager were either outdated or bugged, I found that I had to build both packages from source in order to make it work. A quick overview of how to do that is given below, starting with unixodbc.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget ftp://ftp.unixodbc.org/pub/unixODBC/unixODBC-2.3.4.tar.gz
+tar xf unixODBC-2.3.4.tar.gz
+cd unixODBC-2.3.4
+./configure --disable-gui --disable-drivers --enable-stats=no --enable-iconv --with-iconv-char-enc=UTF8 --with-iconv-ucode-enc=UTF16LE
+make
+sudo make install
+</code></pre></div></div>
+<p>Now the files have been installed in a local library to we need to add <code class="highlighter-rouge">/usr/local/lib</code> to the end of the <code class="highlighter-rouge">/etc/ld.so.conf</code> file and run:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo ldconfig
+</code></pre></div></div>
+
+<p>Next we build the odbc-postgresql package in the same way.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz
+tar xf postgresql-9.6.1.tar.gz
+cd postgresql-9.6.1
+./configure --with-unixodbc=/usr/local/bin/odbc_config 
+make
+sudo make install
+</code></pre></div></div>
+
+<p>We can then setup the connection by editing a few files. Set up the driver in <code class="highlighter-rouge">/usr/local/etc/odbcinst.ini</code>.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[PostgreSQL]
+Description     = PostgreSQL ODBC driver (Unicode 9.5)
+Driver          = /usr/local/lib/psqlodbcw.so
+Debug           = 0
+CommLog         = 1
+UsageCount      = 1
+</code></pre></div></div>
+
+<p>Next set up the database connections. In our case, we add the following to the <code class="highlighter-rouge">/usr/local/etc/odbc.ini</code> file.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[ODBC Data Sources]
+securities = The securities database
+
+[securities]
+Driver      = PostgreSQL
+ServerName  = localhost
+Port        = 5432
+Database    = Securities
+Username    = user
+Password    = password
+Protocol    = 9.6.1
+Debug       = 1
+</code></pre></div></div>
+
+<p>Here the username and password should of course reflect the database user and password. We can then test the connection by running.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>isql -v securities
+</code></pre></div></div>
+
+<p>Which if everything is set up correct returns the following output.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+---------------------------------------+
+| Connected!                            |
+|                                       |
+| sql-statement                         |
+| help [tablename]                      |
+| quit                                  |
+|                                       |
++---------------------------------------+
+SQL&gt; 
+</code></pre></div></div>
+
+<h2 id="interfacing-with-r">Interfacing With R</h2>
+
+<p>We are now ready to use the ODBC driver to interface between R and PostgreSQL. We do this by utilizing the <a href="https://cran.r-project.org/web/packages/RODBC/index.html">RODBC</a> package. This is unfortunately also a bit complicated as RODBC off the box from CRAN comes with iODBC libraries that does not work. So we will compile it from source as we did with the unix packages in the former section.</p>
+
+<p>First we download the source package and set a path such that the compiler uses the unixODBC library instead of the iODBC library. Next we install the package.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget cran.r-project.org/src/contrib/RODBC_1.3-14.tar.gz
+DYLD_LIBRARY_PATH=/usr/local/lib
+sudo R CMD INSTALL RODBC_1.3-13.tar.gz
+</code></pre></div></div>
+
+<p>We can now test the connection in R.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="s2">"RODBC"</span><span class="p">)</span><span class="w">
+</span><span class="n">odbcDataSources</span><span class="p">()</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Which returns the output:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  securities
+"PostgreSQL"
+</code></pre></div></div>
+
+<p>So we have a working connection.</p>
+
+<h2 id="obtaining-stock-symbols-and-exchanges">Obtaining Stock Symbols and Exchanges</h2>
+
+<p>Next we turn towards populating the actual tables. Using the <a href="http://us.spindices.com/indices/equity/sp-500">S&amp;P500 Index</a> as an example, we can, as QuantStart, use <a href="https://en.wikipedia.org/wiki/List_of_S%26P_500_companies">Wikipedia</a> to get a complete list of the symbols of the S&amp;P500 Index. Scraping html tables is incredible easy in R using <a href="http://hadley.nz/">Hadley Wickham’s</a> <a href="https://www.crummy.com/software/BeautifulSoup/">Beautiful Soup</a> inspired package <a href="https://github.com/hadley/rvest">rvest</a>. At the same time we populate the exchange table manually, (S&amp;P 500 stocks are only traded on <a href="https://www.nyse.com/index">NYSE</a> and <a href="http://www.nasdaq.com/">Nasdaq</a>).</p>
+
+<p>The script for obtaining the symbols and the exchanges and populating the tables is given below. To run all the following scripts, you should import these functions.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">magrittr</span><span class="p">,</span><span class="w"> </span><span class="n">`%&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%&lt;&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%$%`</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">xml2</span><span class="p">,</span><span class="w"> </span><span class="n">read_html</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">rvest</span><span class="p">,</span><span class="w"> </span><span class="n">html_node</span><span class="p">,</span><span class="w"> </span><span class="n">html_nodes</span><span class="p">,</span><span class="w"> </span><span class="n">html_table</span><span class="p">,</span><span class="w"> </span><span class="n">html_text</span><span class="p">,</span><span class="w"> </span><span class="n">html_attr</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">dplyr</span><span class="p">,</span><span class="w"> </span><span class="n">transmute</span><span class="p">,</span><span class="w"> </span><span class="n">bind_rows</span><span class="p">,</span><span class="w"> </span><span class="n">left_join</span><span class="p">,</span><span class="w"> </span><span class="n">select</span><span class="p">,</span><span class="w"> </span><span class="n">inner_join</span><span class="p">,</span><span class="w"> </span><span class="n">mutate</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">stringr</span><span class="p">,</span><span class="w"> </span><span class="n">str_extract</span><span class="p">,</span><span class="w"> </span><span class="n">str_replace_all</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">RODBC</span><span class="p">,</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">,</span><span class="w"> </span><span class="n">sqlQuery</span><span class="p">,</span><span class="w"> </span><span class="n">odbcClose</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">httr</span><span class="p">,</span><span class="w"> </span><span class="n">GET</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">jsonlite</span><span class="p">,</span><span class="w"> </span><span class="n">fromJSON</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Two functions get the symbols and the exchanges and two functions inserts these into the postgresql database</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Function obtaining symbols</span><span class="w">
+</span><span class="n">get_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Set current time</span><span class="w">
+  </span><span class="n">current_time</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">Sys.time</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Parse entire wiki url</span><span class="w">
+  </span><span class="n">wiki_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read_html</span><span class="p">(</span><span class="s2">"https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Obtain first table, cast as data frame and extract relevant information</span><span class="w">
+  </span><span class="n">wiki_symbols</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">html_node</span><span class="p">(</span><span class="s2">"h2 + table"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">html_table</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">transmute</span><span class="p">(</span><span class="n">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">`Ticker symbol`</span><span class="p">,</span><span class="w">
+              </span><span class="n">instrument</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Stock"</span><span class="p">,</span><span class="w">
+              </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Security</span><span class="p">,</span><span class="w">
+              </span><span class="n">sector</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">`GICS Sector`</span><span class="p">,</span><span class="w">
+              </span><span class="n">currency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"USD"</span><span class="p">,</span><span class="w">
+              </span><span class="n">created_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+              </span><span class="n">last_updated_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Function obtaining exchanges</span><span class="w">
+</span><span class="n">get_exchanges</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Set current time</span><span class="w">
+  </span><span class="n">current_time</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">Sys.time</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Relevant exchange information</span><span class="w">
+  </span><span class="n">exchanges</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+    </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">exchange</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"NYSE"</span><span class="p">,</span><span class="w">
+      </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"New York Stock Exchange"</span><span class="p">,</span><span class="w">
+      </span><span class="n">city</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"New York"</span><span class="p">,</span><span class="w">
+      </span><span class="n">country</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"United States of America"</span><span class="p">,</span><span class="w">
+      </span><span class="n">currency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"USD"</span><span class="p">,</span><span class="w">
+      </span><span class="n">timezone_offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"-05:00"</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">exchange</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"NASDAQ"</span><span class="p">,</span><span class="w">
+      </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"National Association of Securities Dealers Automated Quotations"</span><span class="p">,</span><span class="w">
+      </span><span class="n">city</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"New York"</span><span class="p">,</span><span class="w">
+      </span><span class="n">country</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"United States of America"</span><span class="p">,</span><span class="w">
+      </span><span class="n">currency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"USD"</span><span class="p">,</span><span class="w">
+      </span><span class="n">timezone_offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"-05:00"</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">bind_rows</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Parse entire wiki url</span><span class="w">
+  </span><span class="n">wiki_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read_html</span><span class="p">(</span><span class="s2">"https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Obtain first row of table, cast as data frame and extract names of symbols </span><span class="w">
+  </span><span class="c1"># and links identifying their respective exchanges.</span><span class="w">
+  </span><span class="n">wiki_symbols</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">html_nodes</span><span class="p">(</span><span class="s2">"td:nth-child(1) .text"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="n">data.frame</span><span class="p">(</span><span class="w">
+        </span><span class="n">symbol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+          </span><span class="n">html_text</span><span class="p">(),</span><span class="w">
+        </span><span class="n">exchange</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+          </span><span class="n">html_attr</span><span class="p">(</span><span class="s2">"href"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+          </span><span class="n">str_extract</span><span class="p">(</span><span class="s2">"[^https://www.].?[a-z-_]*"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+          </span><span class="n">toupper</span><span class="p">(),</span><span class="w">
+        </span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="w">
+      </span><span class="p">)</span><span class="w">
+    </span><span class="p">}</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">left_join</span><span class="p">(</span><span class="n">exchanges</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">transmute</span><span class="p">(</span><span class="n">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">symbol</span><span class="p">,</span><span class="w">
+              </span><span class="n">abbreviation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">exchange</span><span class="p">,</span><span class="w">
+              </span><span class="n">name</span><span class="p">,</span><span class="w">
+              </span><span class="n">city</span><span class="p">,</span><span class="w">
+              </span><span class="n">country</span><span class="p">,</span><span class="w">
+              </span><span class="n">currency</span><span class="p">,</span><span class="w">
+              </span><span class="n">timezone_offset</span><span class="p">,</span><span class="w">
+              </span><span class="n">created_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+              </span><span class="n">last_updated_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Function inserting exchanges into postgresql database</span><span class="w">
+</span><span class="n">insert_exchanges</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">exchanges</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Get unique exchange names</span><span class="w">
+  </span><span class="n">exchanges</span><span class="w"> </span><span class="o">%&lt;&gt;%</span><span class="w">
+    </span><span class="n">select</span><span class="p">(</span><span class="o">-</span><span class="n">ticker</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">unique</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Paste exchange names and values to single strings</span><span class="w">
+  </span><span class="n">ex_names</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">names</span><span class="p">(</span><span class="n">exchanges</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">", "</span><span class="p">)</span><span class="w">
+  </span><span class="n">ex_values</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">apply</span><span class="p">(</span><span class="n">exchanges</span><span class="p">,</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">paste</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"', '"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"'), ('"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"('"</span><span class="p">,</span><span class="w"> </span><span class="n">.</span><span class="p">,</span><span class="w"> </span><span class="s2">"')"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Create sql query</span><span class="w">
+  </span><span class="n">query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"insert into equities.exchange"</span><span class="p">,</span><span class="w">
+                 </span><span class="s2">"("</span><span class="p">,</span><span class="w">
+                 </span><span class="n">ex_names</span><span class="p">,</span><span class="w">
+                 </span><span class="s2">")"</span><span class="p">,</span><span class="w">
+                 </span><span class="s2">"values"</span><span class="p">,</span><span class="w">
+                 </span><span class="n">ex_values</span><span class="p">,</span><span class="w">
+                 </span><span class="s2">";"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Set connection, sedn query and close connection</span><span class="w">
+  </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">(</span><span class="s2">"securities"</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">pwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w">
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">)</span><span class="w">
+  </span><span class="n">odbcClose</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Function inserting symbols into postgresql securities database</span><span class="w">
+</span><span class="n">insert_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span><span class="w"> </span><span class="n">exchanges</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Get exchange names</span><span class="w">
+  </span><span class="n">ex_names</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">exchanges</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">select</span><span class="p">(</span><span class="o">-</span><span class="n">ticker</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="nf">names</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">", "</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># query to obtain exchange ID's in order to populate foreign key table</span><span class="w">
+  </span><span class="n">ex_query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"select id_exchange,"</span><span class="p">,</span><span class="w">
+                    </span><span class="n">ex_names</span><span class="p">,</span><span class="w">
+                    </span><span class="s2">"from equities.exchange;"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Connect to database and send query</span><span class="w">
+  </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">(</span><span class="s2">"securities"</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">pwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w">
+  </span><span class="n">ex</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">ex_query</span><span class="p">,</span><span class="w"> </span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Join exchange id's on symbols and obtain dataframe to populate database table</span><span class="w">
+  </span><span class="n">sym</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">symbols</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">inner_join</span><span class="p">(</span><span class="n">exchanges</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">select</span><span class="p">(</span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="n">abbreviation</span><span class="p">),</span><span class="w">
+               </span><span class="n">by</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="s2">"ticker"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"ticker"</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">inner_join</span><span class="p">(</span><span class="n">ex</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">select</span><span class="p">(</span><span class="n">abbreviation</span><span class="p">,</span><span class="w"> </span><span class="n">id_exchange</span><span class="p">),</span><span class="w">
+               </span><span class="n">by</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="s2">"abbreviation"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"abbreviation"</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">transmute</span><span class="p">(</span><span class="n">id_exchange</span><span class="p">,</span><span class="w">
+              </span><span class="n">ticker</span><span class="p">,</span><span class="w">
+              </span><span class="n">instrument</span><span class="p">,</span><span class="w">
+              </span><span class="n">name</span><span class="p">,</span><span class="w">
+              </span><span class="n">sector</span><span class="p">,</span><span class="w">
+              </span><span class="n">currency</span><span class="p">,</span><span class="w">
+              </span><span class="n">created_datetime</span><span class="p">,</span><span class="w">
+              </span><span class="n">last_updated_datetime</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Paste symbol column names and values to single strings</span><span class="w">
+  </span><span class="n">sym_names</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sym</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="nf">names</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">", "</span><span class="p">)</span><span class="w">
+  </span><span class="n">sym_data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sym</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">str_replace_all</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="s2">"'"</span><span class="p">,</span><span class="w"> </span><span class="s2">" "</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">apply</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">paste</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"', '"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"'), ('"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"('"</span><span class="p">,</span><span class="w"> </span><span class="n">.</span><span class="p">,</span><span class="w"> </span><span class="s2">"')"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Create sql query</span><span class="w">
+  </span><span class="n">sym_query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"insert into equities.symbol"</span><span class="p">,</span><span class="w">
+                     </span><span class="s2">"("</span><span class="p">,</span><span class="w">
+                     </span><span class="n">sym_names</span><span class="p">,</span><span class="w">
+                     </span><span class="s2">")"</span><span class="p">,</span><span class="w">
+                     </span><span class="s2">"values"</span><span class="p">,</span><span class="w">
+                     </span><span class="n">sym_data</span><span class="p">,</span><span class="w">
+                     </span><span class="s2">";"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Send query and close connection</span><span class="w">
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">sym_query</span><span class="p">)</span><span class="w">
+  </span><span class="n">odbcClose</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Run functions</span><span class="w">
+</span><span class="n">get_exchanges</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">insert_exchanges</span><span class="p">(</span><span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Insert user"</span><span class="p">,</span><span class="w">
+                   </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Insert password"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">get_symbols</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">insert_symbols</span><span class="p">(</span><span class="n">get_exchanges</span><span class="p">(),</span><span class="w">
+                 </span><span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Insert user"</span><span class="p">,</span><span class="w">
+                 </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Insert password"</span><span class="p">)</span><span class="w">
+
+</span></code></pre></div></div>
+
+<p>Of course the user and password information should be replaced..</p>
+
+<h2 id="obtaining-stock-qoutes">Obtaining Stock Qoutes</h2>
+
+<p>Finally, we turn towards obtaining the actual stock quotes. I do this using the <a href="http://finance.yahoo.com/">Yahoo Finance</a> API. It is by far the easiest way to obtain the quotes, as the individual series are easy to identify using the ticker symbols and the data returned in a nice <a href="http://www.json.org/">JSON</a> format. First however, I populate the data vendor table using the function given below.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Insert a data vendor to the database</span><span class="w">
+</span><span class="n">insert_data_vendor</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">data_vendor</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Get current time</span><span class="w">
+  </span><span class="n">current_time</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">Sys.time</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Create query to populate the postgresql database</span><span class="w">
+  </span><span class="n">query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"insert into equities.data_vendor "</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"(name, website_url, support_email, created_datetime, last_updated_datetime)"</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"values "</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"('"</span><span class="p">,</span><span class="w">
+                  </span><span class="n">paste</span><span class="p">(</span><span class="n">data_vendor</span><span class="o">$</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">data_vendor</span><span class="o">$</span><span class="n">website_url</span><span class="p">,</span><span class="w">
+                        </span><span class="n">data_vendor</span><span class="o">$</span><span class="n">support_email</span><span class="p">,</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+                        </span><span class="n">sep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"', '"</span><span class="p">),</span><span class="w">
+                  </span><span class="s2">"');"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Connect to database, send query and close connection.</span><span class="w">
+  </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">(</span><span class="s2">"securities"</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">pwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w">
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">)</span><span class="w">
+  </span><span class="n">odbcClose</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="n">data_vendor</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">data.frame</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Yahoo Finance"</span><span class="p">,</span><span class="w">
+                          </span><span class="n">website_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://finance.yahoo.com"</span><span class="p">,</span><span class="w">
+                          </span><span class="n">support_email</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"None"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">insert_data_vendor</span><span class="p">(</span><span class="n">data_vendor</span><span class="p">,</span><span class="w"> </span><span class="s2">"User Name"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Password"</span><span class="p">)</span><span class="w">
+
+</span></code></pre></div></div>
+
+<p>Next we obtain the prices. The function and function call is given below. Note that the function checks against the database in order to remove doublets. This functionality could also be implemented in the other functions, should the need arise, (it probably will).</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Insert stock quotes function</span><span class="w">
+</span><span class="n">insert_stock_quotes</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">date_from</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"2016-08-01"</span><span class="p">,</span><span class="w"> </span><span class="n">date_to</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Sys.Date</span><span class="p">(),</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Set current time</span><span class="w">
+  </span><span class="n">current_time</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">Sys.time</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Symbols query</span><span class="w">
+  </span><span class="n">sym_query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"select id_symbol, ticker, instrument, name, sector, currency from equities.symbol;"</span><span class="w">
+  
+  </span><span class="c1"># Vendor query</span><span class="w">
+  </span><span class="n">ven_query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"select id_data_vendor from equities.data_vendor where name = 'Yahoo Finance';"</span><span class="w">
+  
+  </span><span class="c1"># Connect to database and send queries</span><span class="w">
+  </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">(</span><span class="s2">"securities"</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">pwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w">
+  </span><span class="n">sym</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">sym_query</span><span class="p">,</span><span class="w"> </span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+  </span><span class="n">ven</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">ven_query</span><span class="p">,</span><span class="w"> </span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Extract ticker symbols</span><span class="w">
+  </span><span class="n">ticker</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sym</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+    </span><span class="n">ticker</span><span class="w">
+  
+  </span><span class="c1"># Iterate over each symbol.</span><span class="w">
+  </span><span class="n">json_res</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">lapply</span><span class="p">(</span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+    
+    </span><span class="c1"># Paste ticker symbols to construct call to Yahoo API</span><span class="w">
+    </span><span class="n">url</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste0</span><span class="p">(</span><span class="s1">'https://query.yahooapis.com/v1/public/yql?q=select+*+from+yahoo.finance.historicaldata+where+symbol+in+("'</span><span class="p">,</span><span class="w">
+                  </span><span class="n">x</span><span class="p">,</span><span class="w">
+                  </span><span class="s1">'")+and+startDate="'</span><span class="p">,</span><span class="w">
+                  </span><span class="n">date_from</span><span class="p">,</span><span class="w">
+                  </span><span class="s1">'"+and+endDate="'</span><span class="p">,</span><span class="w">
+                  </span><span class="n">date_to</span><span class="p">,</span><span class="w">
+                  </span><span class="s1">'"&amp;format=json&amp;diagnostics=true&amp;env=store://datatables.org/alltableswithkeys&amp;callback='</span><span class="p">)</span><span class="w">
+    
+    </span><span class="c1"># Get prices and convert result from json to R list.</span><span class="w">
+    </span><span class="n">json</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">GET</span><span class="p">(</span><span class="n">url</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">content</span><span class="p">(</span><span class="n">as</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"text"</span><span class="p">,</span><span class="w"> </span><span class="n">encoding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"UTF-8"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">fromJSON</span><span class="p">()</span><span class="w">
+    
+    </span><span class="n">json</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+      </span><span class="n">query</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+      </span><span class="n">results</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+      </span><span class="n">quote</span><span class="w">
+    
+  </span><span class="p">})</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">bind_rows</span><span class="p">()</span><span class="w">
+  
+  
+  </span><span class="c1"># Extract prices from list object and join to get id_symbol foreign key</span><span class="w">
+  </span><span class="n">res</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">json_res</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">transmute</span><span class="p">(</span><span class="n">id_data_vendor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ven</span><span class="o">$</span><span class="n">id_data_vendor</span><span class="p">,</span><span class="w">
+              </span><span class="n">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Symbol</span><span class="p">,</span><span class="w">
+              </span><span class="n">date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Date</span><span class="p">,</span><span class="w">
+              </span><span class="n">created_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+              </span><span class="n">last_updated_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+              </span><span class="n">open</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Open</span><span class="p">,</span><span class="w">
+              </span><span class="n">high</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">High</span><span class="p">,</span><span class="w">
+              </span><span class="n">low</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Low</span><span class="p">,</span><span class="w">
+              </span><span class="n">close</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w">
+              </span><span class="n">adj_close</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Adj_Close</span><span class="p">,</span><span class="w">
+              </span><span class="n">volume</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Volume</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">inner_join</span><span class="p">(</span><span class="n">sym</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                 </span><span class="n">select</span><span class="p">(</span><span class="n">id_symbol</span><span class="p">,</span><span class="w"> </span><span class="n">ticker</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">select</span><span class="p">(</span><span class="o">-</span><span class="n">ticker</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Concatenate to string</span><span class="w">
+  </span><span class="n">res_string</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">res</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">apply</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">paste</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"', '"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"'), ('"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"('"</span><span class="p">,</span><span class="w"> </span><span class="n">.</span><span class="p">,</span><span class="w"> </span><span class="s2">"')"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Delete existing data</span><span class="w">
+  </span><span class="n">del</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"delete from equities.daily_price where date between '"</span><span class="p">,</span><span class="w">
+                </span><span class="n">date_from</span><span class="p">,</span><span class="w">
+                </span><span class="s2">"' and '"</span><span class="p">,</span><span class="w">
+                </span><span class="n">date_to</span><span class="p">,</span><span class="w">
+                </span><span class="s2">"' and id_symbol in ('"</span><span class="p">,</span><span class="w">
+                </span><span class="n">paste</span><span class="p">(</span><span class="n">res</span><span class="o">$</span><span class="n">id_symbol</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unique</span><span class="p">,</span><span class="w"> </span><span class="n">sep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">', '</span><span class="p">),</span><span class="w">
+                </span><span class="s2">"')"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">del</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Insert new data</span><span class="w">
+  </span><span class="n">query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"insert into equities.daily_price "</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"(id_data_vendor, date, created_datetime, last_updated_datetime, open, high, low, close, adj_close, volume, id_symbol)"</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"values "</span><span class="p">,</span><span class="w">
+                  </span><span class="n">res_string</span><span class="p">)</span><span class="w">
+    
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">)</span><span class="w">
+  </span><span class="n">odbcClose</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Insert stock quotes function</span><span class="w">
+</span><span class="n">insert_stock_quotes</span><span class="p">(</span><span class="n">date_from</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"2016-08-01"</span><span class="p">,</span><span class="w">
+                    </span><span class="n">date_to</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Sys.Date</span><span class="p">(),</span><span class="w">
+                    </span><span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"User Name"</span><span class="p">,</span><span class="w">
+                    </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Password"</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>And that’s all. Of course, if one wanted to keep the data updated, the insert_stock_quotes function could be set to run each day via a <a href="https://en.wikipedia.org/wiki/Cron">Cron</a> job.</p>
+
+                    </div>
+
+                    <div class="col-lg-3 col-md-offset-1 blog-sidebar">
+                        <div class="sidebar-module sidebar-module-inset about">
+                            <h4>Introduction</h4>
+                            <p>I am <a href="/about/">Andreas</a>: Machine learning enthusiast, MLOps devotee, tech addict and all-round geek.</p>
+                        </div>
+                        <div class="sidebar-module search">
+                            <form action="/search" method="GET">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Search" id="inputGroup"/>
+                                        <span class="input-group-addon">
+                                            <i class="fa fa-search"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="sidebar-module archive">
+                            <h4>Archives</h4>
+                            <h5>2016</h5>
+                            <ul>
+                                <li>
+                                    <a href="/2016/02/">
+                                        February
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/03/">
+                                        Marts
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/04/">
+                                        April
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/05/">
+                                        May
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/12/">
+                                        December
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="sidebar-module contact">
+                            <h4>Get at me</h4>
+                            <ul>
+                                <li>
+                                    <a href="/feeds/posts/">
+                                        RSS Feed
+                                    </a>
+                                </li>
+                                <li>
+                                    <p>
+                                        Weblog Archives
+                                    </p>
+                                </li>
+                                <li>
+                                    <a href="https://twitter.com/Andreas_Keller">
+                                        Twitter
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://github.com/AKLLaursen/">
+                                        Github
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://dk.linkedin.com/in/andreas-keller-leth-laursen-40327b32">
+                                        LinkedIn
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="mailto:andreas.keller@gmail.com">
+                                        E-mail
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+                    
+        <div class="container footer">
+            <div class="row">
+                <div class="span12">
+                    <p>
+                        Copyright &copy; Andreas Keller Leth Laursen 2015 - 2020
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

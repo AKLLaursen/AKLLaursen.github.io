@@ -1,0 +1,341 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>Econ and Machine Learning - Andreas Keller Leth Laursen</title>
+        <meta name="description" content="Personal web page of Andreas Keller Leth Laursen with info and a weblog.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="alternate" type="application/rss+xml" title="Blog posts" href="/feeds/posts/" >
+
+        <link rel="apple-touch-icon" href="apple-touch-icon.png">
+        <!-- Place favicon.ico in the root directory -->
+        <link rel="stylesheet" href="/assets/css/styles.css">
+    </head>
+    <body>
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <div class="jumbotron">
+            <div class="container">
+                <h1 id="headline">Econ and Machine Learning</h1>
+                <p>Andreas Keller Leth Laursen</p>
+            </div>      
+        </div>
+
+        <div class="masthead">
+            <div class="container">
+                <nav>
+    <ul class="nav nav-justified span8">
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    Weblog
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/about.html">
+                    About
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/projects.html">
+                    Projects
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/cv.html">
+                    CV
+                </a>
+            </li>
+        
+    </ul>
+</nav>
+            </div>          
+        </div>
+
+        <div class="blog">
+            <div class="container">
+                <div class="row">
+
+                    <div class="col-lg-8 blog-main">
+                        <h1>A 3 D View Of The Us Treasury Yield Curve In R</h1>
+
+<p>
+    05 May 2016
+    
+    
+        - <a href="/authors/andreas.html">Andreas Keller Leth Laursen</a>
+    
+</p>
+
+<p>Some time ago, I was made aware of the brilliant <a href="http://www.nytimes.com/interactive/2015/03/19/upshot/3d-yield-curve-economic-growth.html">3-D view of the US treasury yield curve</a> that <a href="http://driven-by-data.net/">Gregor Aisch</a> had made for <a href="http://www.nytimes.com">New York Times</a>. In my opinion this is a brilliant example of how 3-D graphs in rare cases can be a viable way to visualize data.</p>
+
+<p>For some time, I have been wanting to see how such a 3-D plot of the US treasury yield curve could be constructed in R. Finally, the other day, I had the time to sit down and consider it. First I needed to get hands on the actual data. A number of sources are available, but actually the <a href="https://www.treasury.gov/Pages/default.aspx">Treasury Department</a> itself provides a daily XML feed with the data available <a href="https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yield">here</a>. Thus it was easy to write a script to get the data using <a href="https://github.com/hadley/xml2"><code class="highlighter-rouge">xml2</code></a>, <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="highlighter-rouge">magrittr</code></a> and <a href="https://github.com/hadley/dplyr"><code class="highlighter-rouge">dplyr</code></a>.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">magrittr</span><span class="p">,</span><span class="w"> </span><span class="n">`%&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%$%`</span><span class="p">,</span><span class="w"> </span><span class="n">set_names</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">xml2</span><span class="p">,</span><span class="w"> </span><span class="n">read_xml</span><span class="p">,</span><span class="w"> </span><span class="n">xml_find_all</span><span class="p">,</span><span class="w"> </span><span class="n">xml_children</span><span class="p">,</span><span class="w"> </span><span class="n">xml_text</span><span class="p">,</span><span class="w"> </span><span class="n">xml_name</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">dplyr</span><span class="p">,</span><span class="w"> </span><span class="n">bind_rows</span><span class="p">,</span><span class="w"> </span><span class="n">select</span><span class="p">,</span><span class="w"> </span><span class="n">arrange</span><span class="p">)</span><span class="w">
+
+</span><span class="n">yield_url</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"http://data.treasury.gov/feed.svc/DailyTreasuryYieldCurveRateData"</span><span class="w">
+
+</span><span class="n">yield_data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read_xml</span><span class="p">(</span><span class="n">yield_url</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">xml_find_all</span><span class="p">(</span><span class="s2">"//*[name()='m:properties']"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">lapply</span><span class="p">(</span><span class="n">xml_children</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">lapply</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="n">lapply</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="n">y</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+        </span><span class="n">xml_text</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+        </span><span class="p">{</span><span class="w">
+          </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">xml_name</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Id"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nf">as.integer</span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w">
+          </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">xml_name</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"NEW_DATE"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="n">as.Date</span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w">
+          </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nf">as.numeric</span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w">
+          </span><span class="p">}</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">})</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">set_names</span><span class="p">(</span><span class="n">xml_name</span><span class="p">(</span><span class="n">x</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">as.data.frame</span><span class="p">(</span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+  </span><span class="p">})</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">bind_rows</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">select</span><span class="p">(</span><span class="o">-</span><span class="n">BC_30YEARDISPLAY</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">arrange</span><span class="p">(</span><span class="n">NEW_DATE</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Here I also used the package <a href="https://cran.r-project.org/web/packages/import/vignettes/import.html"><code class="highlighter-rouge">import</code></a>, which makes it possible to import objects into a given R session in a very Python like way. I like this a lot as</p>
+
+<ol>
+  <li>Often you only need to utilize a limited number of functions from a given package. As such, there is really no reason to import the entire library.</li>
+  <li>More importantly, it gives the reader of the script a nice overview of which packages the functions in the script comes from.</li>
+</ol>
+
+<p>Next, how to create the actual plot? There exists a number of R packages for plotting 3-D visualizations. I have given a number of them below.</p>
+
+<ul>
+  <li>The <a href="https://stat.ethz.ch/R-manual/R-devel/library/graphics/html/persp.html"><code class="highlighter-rouge">persp()</code></a> function in the base R package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/plot3D/index.html"><code class="highlighter-rouge">plot3D</code></a> package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/scatterplot3d/index.html"><code class="highlighter-rouge">scatterplot3d</code></a> package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/rgl/index.html"><code class="highlighter-rouge">rgl</code></a> package.</li>
+</ul>
+
+<p>Especially <code class="highlighter-rouge">plot3D</code> has traditionally been used to create static 3-D visualizations. However, in order to make the 3-D graphic as comprehensible as possible, it needs to be dynamic. That is the reader/user has to be able to turn and zoom in the graphic and have labels appearing when hovering over a given point. This means utilizing some sort of JavaScript graphic library. Here <a href="https://d3js.org/">D3</a> is the obvious choice. Luckily in R, we can use the awesome integration of <a href="https://plot.ly/">Plotly</a> in R, to ultimately create a vizualisation that is very close to the one given in the New York Times article. (Digging in the source code of the page seems to reveal that that the original visualization was made using <a href="https://www.adobe.com/products/illustrator.html">Adobe Illustrator</a>).</p>
+
+<p>Making the 3-D view of the yield curve in R turned out to be a simple exercise using the <a href="https://plot.ly/r/"><code class="highlighter-rouge">plotly</code></a> package. Actually one of the <a href="https://plot.ly/~chris/folder/home">founders</a> of Plotly had already made an example, and I basically took his JavaScript code and implemented a very similar solution using the Plotly R API. The code is given below.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">plotly</span><span class="p">,</span><span class="w"> </span><span class="n">plot_ly</span><span class="p">,</span><span class="w"> </span><span class="n">layout</span><span class="p">)</span><span class="w">
+
+</span><span class="n">Sys.setenv</span><span class="p">(</span><span class="s2">"plotly_username"</span><span class="o">=</span><span class="s2">"UserName"</span><span class="p">)</span><span class="w">
+</span><span class="n">Sys.setenv</span><span class="p">(</span><span class="s2">"plotly_api_key"</span><span class="o">=</span><span class="s2">"ApiKey"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">yield_data</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+  </span><span class="n">NEW_DATE</span><span class="w">
+
+</span><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="s2">"1 Month"</span><span class="p">,</span><span class="w"> </span><span class="s2">"3 Month"</span><span class="p">,</span><span class="w"> </span><span class="s2">"6 Month"</span><span class="p">,</span><span class="w"> </span><span class="s2">"1 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"2 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"3 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"5 Year"</span><span class="p">,</span><span class="w"> 
+       </span><span class="s2">"7 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"10 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"20 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"30 Year"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">z</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">yield_data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">select</span><span class="p">(</span><span class="n">BC_1MONTH</span><span class="o">:</span><span class="n">BC_30YEAR</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">as.matrix</span><span class="p">()</span><span class="w">
+
+</span><span class="n">plot</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">plot_ly</span><span class="p">(</span><span class="n">yield_data</span><span class="p">,</span><span class="w">
+                </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w">
+                </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w">
+                </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">z</span><span class="p">,</span><span class="w">
+                </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"surface"</span><span class="p">,</span><span class="w">
+                </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"yield"</span><span class="p">,</span><span class="w">
+                </span><span class="n">colorscale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+                  </span><span class="nf">list</span><span class="p">(</span><span class="w">
+                    </span><span class="m">0</span><span class="p">,</span><span class="w">
+                    </span><span class="s2">"rgb(231, 245, 255)"</span><span class="w">
+                  </span><span class="p">),</span><span class="w">
+                  </span><span class="n">list</span><span class="w"> </span><span class="p">(</span><span class="w">
+                    </span><span class="m">1</span><span class="p">,</span><span class="w">
+                    </span><span class="s2">"rgb(31, 119, 180)"</span><span class="w">
+                  </span><span class="p">)</span><span class="w">
+                </span><span class="p">),</span><span class="w">
+                </span><span class="n">showscale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+                </span><span class="n">lighting</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+                  </span><span class="n">fresnel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.01</span><span class="p">,</span><span class="w">
+                  </span><span class="n">specular</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.01</span><span class="p">,</span><span class="w">
+                  </span><span class="n">ambient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.95</span><span class="p">,</span><span class="w">
+                  </span><span class="n">diffuse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.99</span><span class="p">,</span><span class="w">
+                  </span><span class="n">roughness</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.01</span><span class="w">
+                </span><span class="p">),</span><span class="w">
+                </span><span class="n">zmax</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">10.0</span><span class="p">,</span><span class="w"> 
+                </span><span class="n">zmin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">)</span><span class="w">
+
+</span><span class="n">plot</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">layout</span><span class="p">(</span><span class="w">
+  </span><span class="n">plot</span><span class="p">,</span><span class="w">
+  </span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"US Treasury Yield Curve"</span><span class="p">,</span><span class="w">
+  </span><span class="n">autosize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+  </span><span class="n">scene</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+    </span><span class="n">xaxis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">zeroline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+      </span><span class="n">showgrid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w">
+      </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"category"</span><span class="p">,</span><span class="w">
+      </span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">""</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="n">yaxis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">zeroline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+      </span><span class="n">showgrid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w">
+      </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"date"</span><span class="p">,</span><span class="w">
+      </span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">""</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"surface"</span><span class="p">,</span><span class="w">
+    </span><span class="n">zaxis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">zeroline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+      </span><span class="n">showgrid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w">
+      </span><span class="n">ticksuffix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"%"</span><span class="p">,</span><span class="w">
+      </span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Yield"</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="n">aspectmode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"manual"</span><span class="p">,</span><span class="w">
+    </span><span class="n">camera</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">eye</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+        </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">-0.03</span><span class="p">,</span><span class="w">
+        </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">-2.7</span><span class="p">,</span><span class="w">
+        </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1.3</span><span class="w">
+      </span><span class="p">),</span><span class="w">
+      </span><span class="n">up</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+        </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w">
+        </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w">
+        </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="w">
+      </span><span class="p">),</span><span class="w">
+      </span><span class="n">center</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+        </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w">
+        </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w">
+        </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="w">
+      </span><span class="p">)</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="n">aspectratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w">
+      </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w">
+      </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">),</span><span class="w">
+  </span><span class="n">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">350</span><span class="p">,</span><span class="w">
+  </span><span class="n">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">700</span><span class="p">,</span><span class="w">
+  </span><span class="n">showlegend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+  </span><span class="n">margin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+    </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">20</span><span class="p">,</span><span class="w">
+    </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">60</span><span class="p">,</span><span class="w">
+    </span><span class="n">l</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">20</span><span class="p">,</span><span class="w">
+    </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">60</span><span class="w">
+  </span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w">
+
+</span><span class="n">plot</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Yielding the awesome graphic given below.</p>
+
+<p><a href="https://plot.ly/~AndreasKeller/65/" target="_blank" title="US Treasury Yield Curve" style="display: block; text-align: center;"><img src="https://plot.ly/~AndreasKeller/65.png" alt="US Treasury Yield Curve" style="max-width: 100%;width: 1200px;" width="1200" onerror="this.onerror=null;this.src='https://plot.ly/404.png';" /></a>
+    <script data-plotly="AndreasKeller:65" src="https://plot.ly/embed.js" async=""></script></p>
+
+                    </div>
+
+                    <div class="col-lg-3 col-md-offset-1 blog-sidebar">
+                        <div class="sidebar-module sidebar-module-inset about">
+                            <h4>Introduction</h4>
+                            <p>I am <a href="/about/">Andreas</a>: Machine learning enthusiast, MLOps devotee, tech addict and all-round geek.</p>
+                        </div>
+                        <div class="sidebar-module search">
+                            <form action="/search" method="GET">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Search" id="inputGroup"/>
+                                        <span class="input-group-addon">
+                                            <i class="fa fa-search"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="sidebar-module archive">
+                            <h4>Archives</h4>
+                            <h5>2016</h5>
+                            <ul>
+                                <li>
+                                    <a href="/2016/02/">
+                                        February
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/03/">
+                                        Marts
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/04/">
+                                        April
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/05/">
+                                        May
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/12/">
+                                        December
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="sidebar-module contact">
+                            <h4>Get at me</h4>
+                            <ul>
+                                <li>
+                                    <a href="/feeds/posts/">
+                                        RSS Feed
+                                    </a>
+                                </li>
+                                <li>
+                                    <p>
+                                        Weblog Archives
+                                    </p>
+                                </li>
+                                <li>
+                                    <a href="https://twitter.com/Andreas_Keller">
+                                        Twitter
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://github.com/AKLLaursen/">
+                                        Github
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://dk.linkedin.com/in/andreas-keller-leth-laursen-40327b32">
+                                        LinkedIn
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="mailto:andreas.keller@gmail.com">
+                                        E-mail
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+                    
+        <div class="container footer">
+            <div class="row">
+                <div class="span12">
+                    <p>
+                        Copyright &copy; Andreas Keller Leth Laursen 2015 - 2020
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

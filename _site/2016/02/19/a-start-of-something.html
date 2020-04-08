@@ -1,0 +1,232 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>Econ and Machine Learning - Andreas Keller Leth Laursen</title>
+        <meta name="description" content="Personal web page of Andreas Keller Leth Laursen with info and a weblog.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="alternate" type="application/rss+xml" title="Blog posts" href="/feeds/posts/" >
+
+        <link rel="apple-touch-icon" href="apple-touch-icon.png">
+        <!-- Place favicon.ico in the root directory -->
+        <link rel="stylesheet" href="/assets/css/styles.css">
+    </head>
+    <body>
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <div class="jumbotron">
+            <div class="container">
+                <h1 id="headline">Econ and Machine Learning</h1>
+                <p>Andreas Keller Leth Laursen</p>
+            </div>      
+        </div>
+
+        <div class="masthead">
+            <div class="container">
+                <nav>
+    <ul class="nav nav-justified span8">
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    Weblog
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/about.html">
+                    About
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/projects.html">
+                    Projects
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/cv.html">
+                    CV
+                </a>
+            </li>
+        
+    </ul>
+</nav>
+            </div>          
+        </div>
+
+        <div class="blog">
+            <div class="container">
+                <div class="row">
+
+                    <div class="col-lg-8 blog-main">
+                        <h1>A Start Of Something</h1>
+
+<p>
+    19 Feb 2016
+    
+    
+        - <a href="/authors/andreas.html">Andreas Keller Leth Laursen</a>
+    
+</p>
+
+<p>Greetings.</p>
+
+<p>Welcome to what is to be my online home. Having finished <a href="http://www.econ.au.dk">university</a> and started my first (post academia) full-time <a href="https://www.nationalbanken.dk/en/about_danmarks_nationalbank/organisation/Pages/Statistics.aspx">job</a>, I decided to make a place to document the projects on which I will spend some of my newly found spare time.</p>
+
+<p>This will not be a blog in the traditional sense, but simply a place for me to log what I create while working on my hobbies. These hobbies being statistical programming and financial/economic data analysis. Hence the (current) name of the website, Econ and Data. What I will be doing is logging my work on the web, i.e. writing a weblog. I love learning new things and the site is also meant to inspire myself to learn more about the things that interest me. Through writing on this site, I also hope to improve my writing skills. Though I’m fluent in English, my writing has so far been very academic, and thus I have little experience writing less formal texts.</p>
+
+<p>Having dappled with web application development in <a href="https://www.r-project.org/">R</a> through the <a href="http://shiny.rstudio.com/">Shiny</a> web application framework, I also wanted to use the creation of the site as a learning opportunity. That is to increase my knowledge about HTML, CSS, JavaScript and preferably a more general web framework.</p>
+
+<p>I started by listing how I wanted to built the site, and the features I wanted to implement. This is a summary of what I came up with:</p>
+
+<ul>
+  <li>I wanted to base the HTML and CSS on the <a href="http://getbootstrap.com/">Bootstrap</a> framework. <a href="http://shiny.rstudio.com/">Shiny</a> ui design is very much based on Bootstrap, so I was already pretty familiar with it.</li>
+  <li>The site should support the <a href="https://daringfireball.net/projects/markdown/">Markdown</a> mark-up language. I already use Markdown daily at work and when taking <a href="http://1writerapp.com/">notes</a> on my mobile devices.</li>
+  <li>The site should also support coding blocks with syntax highlighting of the languages I use the most.</li>
+  <li>I didn’t want to use a standard content management system like <a href="https://wordpress.org/">WordPress</a>, as
+    <ol>
+      <li>It would be boring.</li>
+      <li>I wouldn’t learn anything new.</li>
+      <li>I wanted to do my own customisations and certainly didn’t want to learn PHP, if I could avoid it.</li>
+    </ol>
+  </li>
+  <li>In designing my own CMS, I wanted to use a language and a framework that would be both fun to learn and useful to know professional perspective. I had already used <a href="https://www.python.org/">Python</a> a bit, and wanted to learn more as the syntax and the general aesthetics of the language pleased me quite a lot. As Python is used more and more for statistics and data analysis, It also made sense to add it to the list of languages I already knew. Finally, I knew that a very interesting web framework called <a href="https://www.djangoproject.com/">Django</a> was written in Python.</li>
+  <li>I wanted to do things <em>the right way</em>, and use best practises of web development as much as possible. I knew that Django has excellent support for testing, so I also wanted to try my hands at test driven development.</li>
+  <li>I wanted to self-host the site in order to learn a bit about server management and web-hosting in general. I also wanted to be able to integrate small separate web applications into the site.</li>
+</ul>
+
+<p>I started by catching up on the basics of the Python language. All my knowledge of programming is basically self-taught. Having studied economics, I was never able to take any formal computer science courses at university. Thus I used the fact that I was going to learn Python as an opportunity to also read up on basic computer science concepts. I read John Zelle’s introductory <a href="http://mcsp.wartburg.edu/zelle/python/">book</a> on computer science and while I didn’t really learn anything new, it was nice to have familiar concepts presented in a cohesive way for the first time.</p>
+
+<p>Next, I went through a few Django tutorials and read through the <a href="https://docs.djangoproject.com/en/1.9/">documentation</a> in order to get a general overview of the web framework. I soon discovered that with the experience I had, it would be quite a daunting task to design a web application for, what would basically be a blogging engine, from the bottom. All the web applications I had designed so far were data visualisation tools and were never as complex as a content management system. Thus I started browsing the web for tutorials specifically aimed at creating a blogging engine in Django.</p>
+
+<p>I soon discovered that a guy called Matthew Daly had written not only an excellent <a href="http://matthewdaly.co.uk/blog/2013/12/28/django-blog-tutorial-the-next-generation-part-1/">Django blog tutorial</a>, but a tutorial designing a blog engine that supported all the features I had listed. In addition, the turioal also brought a bunch of useful tools to my attention, my favourites being:</p>
+
+<ul>
+  <li>Package management for web development using <a href="http://bower.io/">Bower</a></li>
+  <li>Continuos integration using <a href="https://travis-ci.org/">Travis CI</a>.</li>
+  <li>Tracking of code coverage using <a href="https://coveralls.io/">Coveralls</a>.</li>
+  <li>Automatic deployment trough Travis CI.</li>
+  <li>Caching using <a href="http://memcached.org/">Memcached</a></li>
+  <li>Optimising and minimizing static files using <a href="http://gruntjs.com/">Grunt</a></li>
+</ul>
+
+<p>So in the end, I based the site on the code from this tutorial, though I made a few changes while going along:</p>
+
+<ul>
+  <li>I wrote the site in Python 3 instead of Python 2.</li>
+  <li>I used Django 1.9 and thus didn’t use South for migration.</li>
+  <li>Though my site is hosted on <a href="https://www.heroku.com/">Heroku</a> at this point, I will be hosting it on a visual Linux server in the cloud through <a href="https://www.digitalocean.com/">DigitalOcean</a>. Ubuntu will be the platform as Ubuntu has been the OS of my private workstation for the last couple of years.</li>
+  <li>I did not implement a comment system, as I dislike this system of communication on other sites.</li>
+  <li>I added some archive views, to get the weblog posts shown in a full archive and a monthly archive.</li>
+</ul>
+
+<p>The source code of the site is available at <a href="https://github.com/AKLLaursen/gamgee">Github</a> released under the GPL v2.0 licence. I named the project <em>gamgee</em>, because when building it, I felt like a certain naive <a href="https://en.wikipedia.org/wiki/Samwise_Gamgee">character</a> from one of my favourite novels going on an adventure. The site is still under development, and can at this point be considered an early alpha build. Hopefully, I will expand upon it in the months to come - that is unless something more interesting catches my attention.</p>
+
+<p>Being close to finishing the site, my head is already brimming over with ideas of what I want to next, and I cannot wait to get started. It is time to step into the road, let go of my feet and see where I’m swept off to.</p>
+
+                    </div>
+
+                    <div class="col-lg-3 col-md-offset-1 blog-sidebar">
+                        <div class="sidebar-module sidebar-module-inset about">
+                            <h4>Introduction</h4>
+                            <p>I am <a href="/about/">Andreas</a>: Machine learning enthusiast, MLOps devotee, tech addict and all-round geek.</p>
+                        </div>
+                        <div class="sidebar-module search">
+                            <form action="/search" method="GET">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Search" id="inputGroup"/>
+                                        <span class="input-group-addon">
+                                            <i class="fa fa-search"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="sidebar-module archive">
+                            <h4>Archives</h4>
+                            <h5>2016</h5>
+                            <ul>
+                                <li>
+                                    <a href="/2016/02/">
+                                        February
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/03/">
+                                        Marts
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/04/">
+                                        April
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/05/">
+                                        May
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/12/">
+                                        December
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="sidebar-module contact">
+                            <h4>Get at me</h4>
+                            <ul>
+                                <li>
+                                    <a href="/feeds/posts/">
+                                        RSS Feed
+                                    </a>
+                                </li>
+                                <li>
+                                    <p>
+                                        Weblog Archives
+                                    </p>
+                                </li>
+                                <li>
+                                    <a href="https://twitter.com/Andreas_Keller">
+                                        Twitter
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://github.com/AKLLaursen/">
+                                        Github
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://dk.linkedin.com/in/andreas-keller-leth-laursen-40327b32">
+                                        LinkedIn
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="mailto:andreas.keller@gmail.com">
+                                        E-mail
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+                    
+        <div class="container footer">
+            <div class="row">
+                <div class="span12">
+                    <p>
+                        Copyright &copy; Andreas Keller Leth Laursen 2015 - 2020
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

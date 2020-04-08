@@ -1,0 +1,468 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>Econ and Machine Learning - Andreas Keller Leth Laursen</title>
+        <meta name="description" content="Personal web page of Andreas Keller Leth Laursen with info and a weblog.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="alternate" type="application/rss+xml" title="Blog posts" href="/feeds/posts/" >
+
+        <link rel="apple-touch-icon" href="apple-touch-icon.png">
+        <!-- Place favicon.ico in the root directory -->
+        <link rel="stylesheet" href="/assets/css/styles.css">
+    </head>
+    <body>
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <div class="jumbotron">
+            <div class="container">
+                <h1 id="headline">Econ and Machine Learning</h1>
+                <p>Andreas Keller Leth Laursen</p>
+            </div>      
+        </div>
+
+        <div class="masthead">
+            <div class="container">
+                <nav>
+    <ul class="nav nav-justified span8">
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    Weblog
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/about.html">
+                    About
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/projects.html">
+                    Projects
+                </a>
+            </li>
+        
+            <li class="nav-item">
+                <a class="nav-link" href="/cv.html">
+                    CV
+                </a>
+            </li>
+        
+    </ul>
+</nav>
+            </div>          
+        </div>
+
+        <div class="blog">
+            <div class="container">
+                <div class="row">
+
+                    <div class="col-lg-8 blog-main">
+                        <h1>My Presentation At Copenhagenr User Group</h1>
+
+<p>
+    05 Apr 2016
+    
+    
+        - <a href="/authors/andreas.html">Andreas Keller Leth Laursen</a>
+    
+</p>
+
+<p>Last week I had the pleasure of presenting a side project in front of a bunch of R enthusiast at the monthly <a href="http://www.meetup.com/CopenhagenR-useR-Group/">CopenhagenR useR Group meeting</a>, this time hosted at Microsoft Denmark. I gave a description of the event in a <a href="http://www.akll.io/2016/3/19/speaking-copenhagenr-user-group-revoluti/">previous post</a>. As usual, it was a cool meetup, and I really enjoyed presenting in front of such skilled people. Presenting to a group of peers really gives one the change to “nerd out”, and not dumb down on the technical stuff, which I also relished. The slides for my presentation are available for download <a href="https://dl.dropboxusercontent.com/s/4h9hv9zho9vvqo5/mycroftr.pdf">here</a> and the app I showcased is hosted <a href="http://bit.ly/1NINHEF">here</a>. Below I give a short summary of the presentation.</p>
+
+<h2 id="mycroftr"><code class="highlighter-rouge">mycroftr</code></h2>
+
+<p>In the talk I wanted to highlight some things about R, that I find really cool, and that I thought might be unfamiliar to most people. Of course I had a time constraint, so I also had to stay within what could reasonably be presented in 30 minutes, (I might have ended up going a bit over time). I knew I wanted to talk about a Shiny app project that has been in ongoing development for quite some time, so I ended up picking the two coolest features of this app. These being</p>
+
+<ol>
+  <li>Easy implementation of the JavaScript graphing library <a href="https://www.highcharts.com/">Highcharts</a> in a Shiny app using the package <a href="http://jkunst.com/highcharter/"><code class="highlighter-rouge">highcharter</code></a> by <a href="http://jkunst.com/">Joshua Kunst</a>.</li>
+  <li>How to build a dynamic UI in a <a href="http://shiny.rstudio.com/"><code class="highlighter-rouge">Shiny</code></a> App for easy scaling of input data.</li>
+</ol>
+
+<p>The inspiration for the app hails from the financial industry, where the <a href="http://www.bloomberg.com/professional/products-solutions/">Bloomberg Terminal</a> is a popular tool. Using the custom desktop environment <a href="http://www.bloomberg.com/professional/custom-desktop/">Launchpad</a>, it is possible to build a dashboard with important data and select market news. However, not having $24,000 for a yearly license, I thought I would attempt to create my own using data available for free. Also, it would be nice to create something that doesn’t look like an 80s desktop application.</p>
+
+<p><img src="https://dl.dropboxusercontent.com/s/mlqhv2aiose47oq/bloomberg_launchpad_example_large.png" alt="Bloomberg Launchpad - Those are some nice color" /></p>
+
+<p>Before I started working on the app, I made the following list of requirements. The app should be driven by free online data such as what is available from</p>
+
+<ul>
+  <li><a href="https://www.quandl.com/"><code class="highlighter-rouge">Quandl</code></a></li>
+  <li><a href="http://www.quantmod.com/"><code class="highlighter-rouge">quantmod</code></a></li>
+  <li>Various APIs such as the <a href="http://www.dst.dk/da/Statistik/statistikbanken/api">one offered by Statistics Denmark</a>.</li>
+</ul>
+
+<p>The charting should be done using a interactive charting framework such as</p>
+
+<ul>
+  <li><a href="https://www.highcharts.com/">Highcharts</a></li>
+  <li><a href="https://d3js.org/">D3</a></li>
+  <li><a href="https://plot.ly/"><code class="highlighter-rouge">plotly</code></a></li>
+</ul>
+
+<p>I should be able to feed the app a list of data, and it should generate the graphs automatically depending on the data it has been fed. The reason for this is</p>
+
+<ul>
+  <li>It should be easy to scale the app using new found data.</li>
+  <li>It should be easy to add data by just appending new data sets, such as a Quandl code, to a static file.</li>
+</ul>
+
+<p>So that is a quick overview of the project. The current status is, that the The “template” ui has been completed. Currently needing to find data and feed it (and add graph types if needed). I have decided to call the app and accompanying package <code class="highlighter-rouge">mycroftr</code>, inspired by the <a href="https://en.wikipedia.org/wiki/Mycroft_Holmes">brother</a> of <a href="https://en.wikipedia.org/wiki/Sherlock_Holmes">one of my favourite characters</a> in literature, of whom it is said in The Adventure of the Bruce-Partington Plans</p>
+
+<blockquote>
+  <p>He has the tidiest and most orderly brain, with the greatest capacity for storing facts, of any man living. The same great powers which I have turned to the detection of crime he has used for this particular business. The conclusions of every department are passed to him, and he is the central exchange, the clearinghouse, which makes out the balance. All other men are specialists, but his specialism is omniscience. We will suppose that a minister needs information as to a point which involves the Navy, India, Canada and the bimetallic question; he could get his separate advices from various departments upon each, but only Mycroft can focus them all, and say offhand how each factor would affect the other. They began by using him as a short-cut, a convenience; now he has made himself an essential. In that great brain of his everything is pigeon-holed and can be handed out in an instant.</p>
+</blockquote>
+
+<h2 id="highcharter"><code class="highlighter-rouge">highcharter</code></h2>
+
+<p>As mentioned above I chose to integrate the <a href="http://jkunst.com/highcharter/"><code class="highlighter-rouge">highcharter</code></a> package in my app. But why use <a href="https://www.highcharts.com/">Highcharts</a> at all? The reasons I see can be listed as</p>
+
+<ul>
+  <li>The ability to easily create beautiful interactive plots.</li>
+  <li>There are lots of different kinds of plot types available (also plots specialised for finance through <a href="http://www.highcharts.com/products/highstock">Highstocks</a>).</li>
+  <li>Highcharts had a very mature API, excellent documentation and customisation.</li>
+</ul>
+
+<p>So how to implement Highcharts in R, and specifically in a Shiny app? Until now there has basically been three solutions to implement Highcharts
+in R</p>
+
+<ul>
+  <li>Use the package <a href="http://rcharts.io/"><code class="highlighter-rouge">rCharts</code></a>, which uses a lattice style approach.
+    <ul>
+      <li>Last commit on Github was 2 years ago.</li>
+    </ul>
+  </li>
+  <li>Use the package <a href="https://github.com/jcizel/highchartR"><code class="highlighter-rouge">highchartR</code></a> of which I’m unfamiliar
+    <ul>
+      <li>Last commit on Github was 1 year ago.</li>
+    </ul>
+  </li>
+  <li>Write a JS wrapper yourself.</li>
+</ul>
+
+<p>I started on the last part, but then <code class="highlighter-rouge">highcharter</code> was <a href="http://jkunst.com/r/presenting-highcharter/">released</a> in January. <code class="highlighter-rouge">highcharter</code> is by far (in my opinion) the best Highcharts implementation so far. The package is essentially a wrapper around Highcharts. All plot types of Highcharts are available, though they might take some work to implement. And best of all it uses a familiar layering approach in building graphs. That is <code class="highlighter-rouge">highcharter</code> is a bit like <a href="http://ggplot2.org/"><code class="highlighter-rouge">ggplot2</code></a>, but without non-standard evaluation (as the author puts it himself. The layering is done using the the <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="highlighter-rouge">magrittr</code></a> pibe. Finally it is possible to build custom themes, which is also very cool. I gave some examples of plots and how to create them, which I have presented below.</p>
+
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Get data</span><span class="w">
+
+</span><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+</span><span class="n">library</span><span class="p">(</span><span class="n">Quandl</span><span class="p">)</span><span class="w">
+
+</span><span class="n">start_date</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">as.Date</span><span class="p">(</span><span class="s2">"2015-01-01"</span><span class="p">)</span><span class="w">
+</span><span class="n">end_date</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">as.Date</span><span class="p">(</span><span class="s2">"2015-12-31"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+  </span><span class="n">DowJones</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"YAHOO/INDEX_DJI"</span><span class="p">,</span><span class="w"> </span><span class="n">start_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">start_date</span><span class="p">,</span><span class="w">
+                    </span><span class="n">end_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">end_date</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"monthly"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">),</span><span class="w">
+  </span><span class="n">SP500</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"YAHOO/INDEX_GSPC"</span><span class="p">,</span><span class="w"> </span><span class="n">start_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">start_date</span><span class="p">,</span><span class="w">
+                 </span><span class="n">end_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">end_date</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"monthly"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">),</span><span class="w">
+  </span><span class="n">DAX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"YAHOO/INDEX_GDAXI"</span><span class="p">,</span><span class="w"> </span><span class="n">start_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">start_date</span><span class="p">,</span><span class="w">
+               </span><span class="n">end_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">end_date</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"monthly"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">rbind_all</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">transmute</span><span class="p">(</span><span class="n">Date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">format</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="s2">"%b"</span><span class="p">),</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Price</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">round</span><span class="p">(</span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">))</span><span class="w">
+
+
+</span><span class="c1"># Line plot</span><span class="w">
+
+</span><span class="n">library</span><span class="p">(</span><span class="n">highcharter</span><span class="p">)</span><span class="w">
+
+</span><span class="n">chart</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">highchart</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">))</span><span class="w">
+
+</span><span class="n">chart</span><span class="w">
+
+
+</span><span class="c1"># Line plot - multiple lines</span><span class="w">
+
+</span><span class="n">library</span><span class="p">(</span><span class="n">highcharter</span><span class="p">)</span><span class="w">
+
+</span><span class="n">chart</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_title</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Index values"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_xAxis</span><span class="p">(</span><span class="n">categories</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="o">$</span><span class="n">Date</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                 </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                 </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_yAxis</span><span class="p">(</span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Value"</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">hc_add_theme</span><span class="p">(</span><span class="n">hc_theme_sandsignika</span><span class="p">())</span><span class="w">
+
+
+</span><span class="c1"># Line plot and column plot</span><span class="w">
+
+</span><span class="n">highchart</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_title</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Index values"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">),</span><span class="w">
+               </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"column"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_xAxis</span><span class="p">(</span><span class="n">categories</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="o">$</span><span class="n">Date</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">),</span><span class="w">
+               </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"column"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_yAxis</span><span class="p">(</span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Value"</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">hc_add_theme</span><span class="p">(</span><span class="n">hc_theme_sandsignika</span><span class="p">())</span><span class="w">
+
+
+</span><span class="c1"># Tree map</span><span class="w">
+
+</span><span class="n">library</span><span class="p">(</span><span class="n">treemap</span><span class="p">)</span><span class="w">
+</span><span class="n">library</span><span class="p">(</span><span class="n">viridisLite</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="p">(</span><span class="n">GNI2014</span><span class="p">)</span><span class="w">
+
+</span><span class="n">tm</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">treemap</span><span class="p">(</span><span class="n">GNI2014</span><span class="p">,</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="s2">"continent"</span><span class="p">,</span><span class="w"> </span><span class="s2">"iso3"</span><span class="p">),</span><span class="w">
+              </span><span class="n">vSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"population"</span><span class="p">,</span><span class="w"> </span><span class="n">vColor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"GNI"</span><span class="p">,</span><span class="w">
+              </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"value"</span><span class="p">,</span><span class="w"> </span><span class="n">palette</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viridis</span><span class="p">(</span><span class="m">6</span><span class="p">),</span><span class="w">
+              </span><span class="n">draw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+</span><span class="n">hc_tm</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">highchart</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie_treemap</span><span class="p">(</span><span class="n">tm</span><span class="p">,</span><span class="w"> </span><span class="n">allowDrillToNode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w">
+                       </span><span class="n">layoutAlgorithm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"squarified"</span><span class="p">,</span><span class="w">
+                       </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"tmdata"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_title</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Gross National Income World Data - 2014"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_tooltip</span><span class="p">(</span><span class="n">pointFormat</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"&lt;b&gt;{point.name}&lt;/b&gt;:&lt;br&gt;
+             Pop: {point.value:,.0f}&lt;br&gt;
+             GNI: {point.valuecolor:,.0f}"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">hc_tm</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Every container in the Highcharts API has its own separate <code class="highlighter-rouge">highcharter</code> function. As such, every graph imaginable from the Highcharts website can be recreated in R. Thus it is easy to leverage the extremely powerful chart library that is Highcharts. The charts are easy to implement in a Shiny app through the <code class="highlighter-rouge">renderHighchart()</code> and <code class="highlighter-rouge">highchartOutput()</code> functions.</p>
+
+<h2 id="dynamic-ui-in-shiny">Dynamic UI in Shiny</h2>
+<p>If you are familiar with writing applications in Shiny, you are familiar with the <code class="highlighter-rouge">ui.R</code> and <code class="highlighter-rouge">server.R</code> approach to building apps.</p>
+
+<ul>
+  <li><code class="highlighter-rouge">ui.R</code> is where the interface is defined.</li>
+  <li><code class="highlighter-rouge">server.R</code> handles the server side of the app. Usually data gathering, data manipulation, data modeling and data visualisation.</li>
+</ul>
+
+<p>This approach is however very static, that is for each plot you write a server side component and a UI component. This makes it difficult to scale when you increase the amount of input data. Below is an example of how you would build an app traditionally using this approach. The example is taken from the <a href="http://shiny.rstudio.com/tutorial/lesson1/">RStudio Shiny tutoriual</a>.</p>
+
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
+
+</span><span class="c1"># ui.R</span><span class="w">
+</span><span class="n">shinyUI</span><span class="p">(</span><span class="n">fluidPage</span><span class="p">(</span><span class="w">
+
+  </span><span class="n">titlePanel</span><span class="p">(</span><span class="s2">"Hello Shiny!"</span><span class="p">),</span><span class="w">
+
+  </span><span class="n">sidebarLayout</span><span class="p">(</span><span class="w">
+    </span><span class="n">sidebarPanel</span><span class="p">(</span><span class="w">
+      </span><span class="n">sliderInput</span><span class="p">(</span><span class="s2">"bins"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Number of bins:"</span><span class="p">,</span><span class="w"> </span><span class="n">min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">max</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">50</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">30</span><span class="p">)</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+
+    </span><span class="c1"># Static output displayed</span><span class="w">
+    </span><span class="n">mainPanel</span><span class="p">(</span><span class="w">
+      </span><span class="n">plotOutput</span><span class="p">(</span><span class="s2">"distPlot"</span><span class="p">)</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">)</span><span class="w">
+</span><span class="p">))</span><span class="w">
+
+</span><span class="c1"># server.R</span><span class="w">
+</span><span class="n">shinyServer</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+
+  </span><span class="c1"># Static output generated</span><span class="w">
+  </span><span class="n">output</span><span class="o">$</span><span class="n">distPlot</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderPlot</span><span class="p">({</span><span class="w">
+    </span><span class="n">x</span><span class="w">    </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">faithful</span><span class="p">[,</span><span class="w"> </span><span class="m">2</span><span class="p">]</span><span class="w">  </span><span class="c1"># Old Faithful Geyser data</span><span class="w">
+    </span><span class="n">bins</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">seq</span><span class="p">(</span><span class="nf">min</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="w"> </span><span class="nf">max</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="w"> </span><span class="n">length.out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">bins</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="p">)</span><span class="w">
+
+    </span><span class="c1"># draw the histogram with the specified number of bins</span><span class="w">
+    </span><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">breaks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bins</span><span class="p">,</span><span class="w"> </span><span class="n">col</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'darkgray'</span><span class="p">,</span><span class="w"> </span><span class="n">border</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'white'</span><span class="p">)</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+</span><span class="p">})</span><span class="w">
+</span></code></pre></div></div>
+
+<p>I however want to be able to serve the app a list of data, and have the interface (the plots) adjust accordingly. This is in part inspired by <a href="http://please.hackmyresume.com/">HackMyResume</a>, a project making you able to generate CV from information in a JSON file. So in <code class="highlighter-rouge">Shiny</code> I want to serve the server a list of data, that can be subset through the inputs from the UI, making me able to</p>
+
+<ul>
+  <li>Generate the UI on the server side though the <code class="highlighter-rouge">renderUI()</code> function.</li>
+  <li>Display the UI through the <code class="highlighter-rouge">uiOutput()</code> and leave the rest of the <code class="highlighter-rouge">ui.R</code>
+file as a template.</li>
+</ul>
+
+<p>An example of how to implement this is given below. This code is inspired by <a href="https://gist.github.com/wch/5436415/">this gist</a>.</p>
+
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
+
+</span><span class="c1"># ui.R</span><span class="w">
+</span><span class="n">shinyUI</span><span class="p">(</span><span class="n">fluidPage</span><span class="p">(</span><span class="w">
+
+  </span><span class="n">titlePanel</span><span class="p">(</span><span class="s2">"Hello Shiny!"</span><span class="p">),</span><span class="w">
+
+  </span><span class="n">sidebarLayout</span><span class="p">(</span><span class="w">
+    </span><span class="n">sidebarPanel</span><span class="p">(</span><span class="w">
+      </span><span class="n">selectInput</span><span class="p">(</span><span class="s2">"stock_geography"</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"Select area"</span><span class="p">,</span><span class="w">
+                  </span><span class="nf">names</span><span class="p">(</span><span class="n">get_stock_list</span><span class="p">())),</span><span class="w">
+      </span><span class="n">selectInput</span><span class="p">(</span><span class="s2">"stock_type"</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"Select chart type"</span><span class="p">,</span><span class="w">
+                  </span><span class="nf">c</span><span class="p">(</span><span class="s2">"Line Plot"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Candlestick"</span><span class="p">),</span><span class="w">
+                  </span><span class="s2">"Candlestick"</span><span class="p">)</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+
+    </span><span class="c1"># Dynamic UI displayed</span><span class="w">
+    </span><span class="n">mainPanel</span><span class="p">(</span><span class="w">
+      </span><span class="n">uiOutput</span><span class="p">(</span><span class="s2">"plots"</span><span class="p">)</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">)</span><span class="w">
+</span><span class="p">))</span><span class="w">
+
+</span><span class="c1"># server.R</span><span class="w">
+</span><span class="n">shinyServer</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+
+  </span><span class="n">data_stock</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">reactive</span><span class="p">({</span><span class="w">
+    </span><span class="c1"># Get data from Quandl based on security type and geographic</span><span class="w">
+    </span><span class="n">lapply</span><span class="p">(</span><span class="n">get_stock_list</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`[[`</span><span class="p">(</span><span class="n">input</span><span class="o">$</span><span class="n">stock_geography</span><span class="p">),</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="n">Quandl</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"xts"</span><span class="p">)</span><span class="w">
+    </span><span class="p">})</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+  
+  </span><span class="n">output</span><span class="o">$</span><span class="n">plots</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderUI</span><span class="p">({</span><span class="w">
+
+    </span><span class="c1"># Generate list of Highcharts outputs</span><span class="w">
+    </span><span class="n">plot_output_list</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">lapply</span><span class="p">(</span><span class="m">1</span><span class="o">:</span><span class="p">(</span><span class="n">data_stock</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">length</span><span class="p">),</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="n">plotname</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"plot"</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">sep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"_"</span><span class="p">)</span><span class="w">
+      </span><span class="n">highchartOutput</span><span class="p">(</span><span class="n">plotname</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">500</span><span class="p">)</span><span class="w">
+    </span><span class="p">})</span><span class="w">
+
+    </span><span class="c1"># Convert the list to a tagList</span><span class="w">
+    </span><span class="n">do.call</span><span class="p">(</span><span class="n">tagList</span><span class="p">,</span><span class="w"> </span><span class="n">plot_output_list</span><span class="p">)</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+
+  </span><span class="n">observe</span><span class="p">({</span><span class="w">
+    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="p">(</span><span class="n">data_stock</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">length</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w">
+
+      </span><span class="c1"># Need local so that each item gets its own number.</span><span class="w">
+      </span><span class="n">local</span><span class="p">({</span><span class="w">
+        </span><span class="n">x_local</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">x</span><span class="w">
+
+        </span><span class="n">plotname</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"plot"</span><span class="p">,</span><span class="w"> </span><span class="n">x_local</span><span class="p">,</span><span class="w"> </span><span class="n">sep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"_"</span><span class="p">)</span><span class="w">
+
+        </span><span class="n">output</span><span class="p">[[</span><span class="n">plotname</span><span class="p">]]</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderHighchart</span><span class="p">({</span><span class="w">
+
+          </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">input</span><span class="o">$</span><span class="n">stock_type</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Candlestick"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="n">plot_candlestick</span><span class="p">(</span><span class="n">data_stock</span><span class="p">()[</span><span class="n">x_local</span><span class="p">])</span><span class="w">
+          </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">input</span><span class="o">$</span><span class="n">stock_type</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Line Plot"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="n">plot_line</span><span class="p">(</span><span class="n">data_stock</span><span class="p">()[</span><span class="n">x_local</span><span class="p">])</span><span class="w">
+          </span><span class="p">}</span><span class="w">
+        </span><span class="p">})</span><span class="w">
+      </span><span class="p">})</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+</span><span class="p">})</span><span class="w">
+</span></code></pre></div></div>
+
+<p>This finishes the examples from my presentations. The app is currently in development (and very infrequently updated), but a working version of the app can be found <a href="www.apps.akll.io/shiny/mycroftr">here</a> and the code is available at my <a href="https://github.com/AKLLaursen/mycroftr">Github</a>.</p>
+
+                    </div>
+
+                    <div class="col-lg-3 col-md-offset-1 blog-sidebar">
+                        <div class="sidebar-module sidebar-module-inset about">
+                            <h4>Introduction</h4>
+                            <p>I am <a href="/about/">Andreas</a>: Machine learning enthusiast, MLOps devotee, tech addict and all-round geek.</p>
+                        </div>
+                        <div class="sidebar-module search">
+                            <form action="/search" method="GET">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Search" id="inputGroup"/>
+                                        <span class="input-group-addon">
+                                            <i class="fa fa-search"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="sidebar-module archive">
+                            <h4>Archives</h4>
+                            <h5>2016</h5>
+                            <ul>
+                                <li>
+                                    <a href="/2016/02/">
+                                        February
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/03/">
+                                        Marts
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/04/">
+                                        April
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/05/">
+                                        May
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/2016/12/">
+                                        December
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="sidebar-module contact">
+                            <h4>Get at me</h4>
+                            <ul>
+                                <li>
+                                    <a href="/feeds/posts/">
+                                        RSS Feed
+                                    </a>
+                                </li>
+                                <li>
+                                    <p>
+                                        Weblog Archives
+                                    </p>
+                                </li>
+                                <li>
+                                    <a href="https://twitter.com/Andreas_Keller">
+                                        Twitter
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://github.com/AKLLaursen/">
+                                        Github
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://dk.linkedin.com/in/andreas-keller-leth-laursen-40327b32">
+                                        LinkedIn
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="mailto:andreas.keller@gmail.com">
+                                        E-mail
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+                    
+        <div class="container footer">
+            <div class="row">
+                <div class="span12">
+                    <p>
+                        Copyright &copy; Andreas Keller Leth Laursen 2015 - 2020
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
