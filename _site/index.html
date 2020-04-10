@@ -69,11 +69,719 @@
             <h2><a href="/2016/12/17/securities-database-on-ubuntu-using-postgresql-and-r.html">Securities Database On Ubuntu Using Postgresql And R</a></h2>
             <p>For various purposes, I have been wanting to set up a database with the aim of hosting securities data on my <a href="https://www.digitalocean.com/">server</a> for some time now. I thought that I would document the process as I went along, such that it would be easy to do again, should I ever need to. Further, it might be both interesting and useful for other people.</p>
 
+<p>An easy accessible database is very useful if you want to check the odd model, theory or just want to do a quick visualisation. Accessing services such as <a href="https://www.quandl.com/">Quandl</a> can quickly get very time consuming, once you need a large number of time series.</p>
+
+<p>As for the specific database, a number of options is available, but really the choice boils down to either a <a href="https://en.wikipedia.org/wiki/Relational_database">relational database</a> (<a href="https://www.microsoft.com/en-us/server-cloud/">Microsoft SQL Server</a>, <a href="https://www.oracle.com/database/index.html">Oracle</a>, <a href="https://www.mysql.com/">MySQL</a>, <a href="http://www.postgresql.org/">Postgresql</a>) or a <a href="https://en.wikipedia.org/wiki/NoSQL">NoSQL database</a> (<a href="https://www.mongodb.com/">MongoDB</a>, <a href="http://couchdb.apache.org/">CouchDB</a>, <a href="http://redis.io/">Redis</a>). Being very familiar with relational databases in general and <a href="https://en.wikipedia.org/wiki/SQL">SQL</a> in particular, this is a natural choice for me. I go with Postgresql as 1) it is free and open source and 2) I am already familiar with it as this site, <a href="www.akll.io">akll.io</a>, is built using Postgresql through <a href="https://www.djangoproject.com/">Django</a>.</p>
+
+<h2 id="setting-up-the-postgresql-database">Setting Up the Postgresql Database</h2>
+
+<p>The database will be hosted on a <a href="http://www.ubuntu.com/server">Ubuntu Server 14.04</a> platform. I have still to migrate the server to 16.04, even though Digital Ocean has made it available. Postgresql is ridiculously easy to set up. To install SSH into the server and run.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get update
+sudo apt-get install postgresql postgresql-contrib
+</code></pre></div></div>
+
+<p>The <a href="http://www.postgresql.org/docs/9.1/static/contrib.html">contrib package</a> provides porting tools, analysis utilities, and plug-in features that are not part of the core PostgreSQL system. As part of the installation, a user account called <code class="highlighter-rouge">postgres</code> is created. This user can be used to check that Postgres is installed and working as intended.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo -i -u postgres
+psql
+
+psql (9.4.5)
+Type "help" for help.
+
+\q
+</code></pre></div></div>
+
+<p>Next up is creating a new role. One might want to associate an existing account with the given role, or one might want to create a new account. At any rate the role is assigned by entering the following using the <code class="highlighter-rouge">postgres</code> account.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createuser --interactive
+Enter name of role to add: andreas   
+Shall the new role be a superuser? (y/n) y
+</code></pre></div></div>
+
+<p>Here I choose to be a superuser in order to have all privileges. Each user must also be associated with a database of the same name. It can be created by entering.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createdb andreas
+</code></pre></div></div>
+
+<p>Thus the <code class="highlighter-rouge">psql</code> command can be invoked as the given user (in my case andreas). That’s it for setting up the server. Of course there’s a lot more to relational database administration, but as this is a small server only accessed by one person, there is no reason to get fancy with user rights and restrictions.</p>
+
+<p>We can then create and access the actual securities database by running the following commands in the terminal. The standard in postgreql is to use all lower-case names, however due to problems with RODBC, I had to have the database name be capitalized. I have no idea as to why.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createdb Securities
+psql Securities
+</code></pre></div></div>
+
+<p>Next, it is time to set up the database. In this post I will cover how to set up equities in the <a href="https://www.quantstart.com/articles/Securities-Master-Database-with-MySQL-and-Python">style</a> of Michael Halls-Moore of <a href="https://www.quantstart.com/">QuantStart</a>. I will however append a bit as I go along. Thus, we will be creating 4 simple tables:</p>
+
+<ul>
+  <li>exchange: The exchanges to obtain prices from - Dimensional table.</li>
+  <li>data_provider: The providers of the data - Dimensional table.</li>
+  <li>symbol: The ticker symbols - Dimensional table.</li>
+  <li>daily_price: The actual prices - Fact table.</li>
+</ul>
+
+<p>First I create an equity schema.</p>
+
+<pre><code class="language-SQL">create schema equities;
+</code></pre>
+
+<p>And then I build the tables, starting with the exchange table and then building the data_provider, symbol and daily_price tables.</p>
+
+<pre><code class="language-SQL">create table equities.exchange (
+  id_exchange serial not null primary key,
+  abbreviation varchar(32) not null,
+  name varchar(255) not null,
+  city varchar(255) null,
+  country varchar(255) null,
+  currency varchar(64) null,
+  timezone_offset varchar(6) null,
+  created_datetime timestamp not null,
+  last_updated_datetime timestamp not null
+);
+
+create table equities.data_vendor (
+  id_data_vendor serial not null primary key,
+  name varchar(64) not null,
+  website_url varchar(255) null,
+  support_email varchar(255) null,
+  created_datetime timestamp not null,
+  last_updated_datetime timestamp not null
+);
+
+create table equities.symbol (
+  id_symbol serial not null primary key,
+  id_exchange serial not null references equities.exchange(id_exchange),
+  ticker varchar(32) not null,
+  instrument varchar(64) not null,
+  name varchar(255) null,
+  sector varchar(255) null,
+  currency varchar(32) null,
+  created_datetime timestamp not null,
+  last_updated_datetime timestamp not null
+);
+
+create table equities.daily_price (
+  id_daily_price serial not null primary key,
+  id_data_vendor serial not null references equities.data_vendor(id_data_vendor),
+  id_symbol serial not null references equities.symbol(id_symbol),
+  date timestamp not null,
+  created_datetime timestamp not null,
+  last_updated_datetime timestamp not null,
+  open decimal(19, 4) null,
+  high decimal(19, 4) null,
+  low decimal(19, 4) null,
+  close decimal(19, 4) null,
+  adj_close decimal(19, 4) null,
+  volume bigint null
+);
+
+</code></pre>
+
+<p>Note the use of foreign keys employed to connect dimensions to the fact table through their respective primary keys.</p>
+
+<h2 id="connect-to-the-postgresql-database-using-r">Connect to the Postgresql Database Using R</h2>
+
+<p>In R it is easy to connect to a variety of relational databases using the <a href="https://en.wikipedia.org/wiki/Open_Database_Connectivity">ODBC</a> database interface <a href="https://cran.r-project.org/web/packages/RODBC/index.html">RODBC</a>. However, setting up ODBC on a Ubuntu server is unfortunately quite a hassle. First we need to install the unixodbc and odbc-postgresql packages, which installs an open source implementation of the ODBC API and the official PostgreSQL ODBC driver. As the versions of these packages hosted in Ubuntu’s package manager were either outdated or bugged, I found that I had to build both packages from source in order to make it work. A quick overview of how to do that is given below, starting with unixodbc.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget ftp://ftp.unixodbc.org/pub/unixODBC/unixODBC-2.3.4.tar.gz
+tar xf unixODBC-2.3.4.tar.gz
+cd unixODBC-2.3.4
+./configure --disable-gui --disable-drivers --enable-stats=no --enable-iconv --with-iconv-char-enc=UTF8 --with-iconv-ucode-enc=UTF16LE
+make
+sudo make install
+</code></pre></div></div>
+<p>Now the files have been installed in a local library to we need to add <code class="highlighter-rouge">/usr/local/lib</code> to the end of the <code class="highlighter-rouge">/etc/ld.so.conf</code> file and run:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo ldconfig
+</code></pre></div></div>
+
+<p>Next we build the odbc-postgresql package in the same way.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz
+tar xf postgresql-9.6.1.tar.gz
+cd postgresql-9.6.1
+./configure --with-unixodbc=/usr/local/bin/odbc_config 
+make
+sudo make install
+</code></pre></div></div>
+
+<p>We can then setup the connection by editing a few files. Set up the driver in <code class="highlighter-rouge">/usr/local/etc/odbcinst.ini</code>.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[PostgreSQL]
+Description     = PostgreSQL ODBC driver (Unicode 9.5)
+Driver          = /usr/local/lib/psqlodbcw.so
+Debug           = 0
+CommLog         = 1
+UsageCount      = 1
+</code></pre></div></div>
+
+<p>Next set up the database connections. In our case, we add the following to the <code class="highlighter-rouge">/usr/local/etc/odbc.ini</code> file.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[ODBC Data Sources]
+securities = The securities database
+
+[securities]
+Driver      = PostgreSQL
+ServerName  = localhost
+Port        = 5432
+Database    = Securities
+Username    = user
+Password    = password
+Protocol    = 9.6.1
+Debug       = 1
+</code></pre></div></div>
+
+<p>Here the username and password should of course reflect the database user and password. We can then test the connection by running.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>isql -v securities
+</code></pre></div></div>
+
+<p>Which if everything is set up correct returns the following output.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+---------------------------------------+
+| Connected!                            |
+|                                       |
+| sql-statement                         |
+| help [tablename]                      |
+| quit                                  |
+|                                       |
++---------------------------------------+
+SQL&gt; 
+</code></pre></div></div>
+
+<h2 id="interfacing-with-r">Interfacing With R</h2>
+
+<p>We are now ready to use the ODBC driver to interface between R and PostgreSQL. We do this by utilizing the <a href="https://cran.r-project.org/web/packages/RODBC/index.html">RODBC</a> package. This is unfortunately also a bit complicated as RODBC off the box from CRAN comes with iODBC libraries that does not work. So we will compile it from source as we did with the unix packages in the former section.</p>
+
+<p>First we download the source package and set a path such that the compiler uses the unixODBC library instead of the iODBC library. Next we install the package.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget cran.r-project.org/src/contrib/RODBC_1.3-14.tar.gz
+DYLD_LIBRARY_PATH=/usr/local/lib
+sudo R CMD INSTALL RODBC_1.3-13.tar.gz
+</code></pre></div></div>
+
+<p>We can now test the connection in R.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="s2">"RODBC"</span><span class="p">)</span><span class="w">
+</span><span class="n">odbcDataSources</span><span class="p">()</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Which returns the output:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  securities
+"PostgreSQL"
+</code></pre></div></div>
+
+<p>So we have a working connection.</p>
+
+<h2 id="obtaining-stock-symbols-and-exchanges">Obtaining Stock Symbols and Exchanges</h2>
+
+<p>Next we turn towards populating the actual tables. Using the <a href="http://us.spindices.com/indices/equity/sp-500">S&amp;P500 Index</a> as an example, we can, as QuantStart, use <a href="https://en.wikipedia.org/wiki/List_of_S%26P_500_companies">Wikipedia</a> to get a complete list of the symbols of the S&amp;P500 Index. Scraping html tables is incredible easy in R using <a href="http://hadley.nz/">Hadley Wickham’s</a> <a href="https://www.crummy.com/software/BeautifulSoup/">Beautiful Soup</a> inspired package <a href="https://github.com/hadley/rvest">rvest</a>. At the same time we populate the exchange table manually, (S&amp;P 500 stocks are only traded on <a href="https://www.nyse.com/index">NYSE</a> and <a href="http://www.nasdaq.com/">Nasdaq</a>).</p>
+
+<p>The script for obtaining the symbols and the exchanges and populating the tables is given below. To run all the following scripts, you should import these functions.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">magrittr</span><span class="p">,</span><span class="w"> </span><span class="n">`%&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%&lt;&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%$%`</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">xml2</span><span class="p">,</span><span class="w"> </span><span class="n">read_html</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">rvest</span><span class="p">,</span><span class="w"> </span><span class="n">html_node</span><span class="p">,</span><span class="w"> </span><span class="n">html_nodes</span><span class="p">,</span><span class="w"> </span><span class="n">html_table</span><span class="p">,</span><span class="w"> </span><span class="n">html_text</span><span class="p">,</span><span class="w"> </span><span class="n">html_attr</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">dplyr</span><span class="p">,</span><span class="w"> </span><span class="n">transmute</span><span class="p">,</span><span class="w"> </span><span class="n">bind_rows</span><span class="p">,</span><span class="w"> </span><span class="n">left_join</span><span class="p">,</span><span class="w"> </span><span class="n">select</span><span class="p">,</span><span class="w"> </span><span class="n">inner_join</span><span class="p">,</span><span class="w"> </span><span class="n">mutate</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">stringr</span><span class="p">,</span><span class="w"> </span><span class="n">str_extract</span><span class="p">,</span><span class="w"> </span><span class="n">str_replace_all</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">RODBC</span><span class="p">,</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">,</span><span class="w"> </span><span class="n">sqlQuery</span><span class="p">,</span><span class="w"> </span><span class="n">odbcClose</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">httr</span><span class="p">,</span><span class="w"> </span><span class="n">GET</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">jsonlite</span><span class="p">,</span><span class="w"> </span><span class="n">fromJSON</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Two functions get the symbols and the exchanges and two functions inserts these into the postgresql database</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Function obtaining symbols</span><span class="w">
+</span><span class="n">get_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Set current time</span><span class="w">
+  </span><span class="n">current_time</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">Sys.time</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Parse entire wiki url</span><span class="w">
+  </span><span class="n">wiki_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read_html</span><span class="p">(</span><span class="s2">"https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Obtain first table, cast as data frame and extract relevant information</span><span class="w">
+  </span><span class="n">wiki_symbols</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">html_node</span><span class="p">(</span><span class="s2">"h2 + table"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">html_table</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">transmute</span><span class="p">(</span><span class="n">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">`Ticker symbol`</span><span class="p">,</span><span class="w">
+              </span><span class="n">instrument</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Stock"</span><span class="p">,</span><span class="w">
+              </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Security</span><span class="p">,</span><span class="w">
+              </span><span class="n">sector</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">`GICS Sector`</span><span class="p">,</span><span class="w">
+              </span><span class="n">currency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"USD"</span><span class="p">,</span><span class="w">
+              </span><span class="n">created_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+              </span><span class="n">last_updated_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Function obtaining exchanges</span><span class="w">
+</span><span class="n">get_exchanges</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Set current time</span><span class="w">
+  </span><span class="n">current_time</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">Sys.time</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Relevant exchange information</span><span class="w">
+  </span><span class="n">exchanges</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+    </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">exchange</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"NYSE"</span><span class="p">,</span><span class="w">
+      </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"New York Stock Exchange"</span><span class="p">,</span><span class="w">
+      </span><span class="n">city</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"New York"</span><span class="p">,</span><span class="w">
+      </span><span class="n">country</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"United States of America"</span><span class="p">,</span><span class="w">
+      </span><span class="n">currency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"USD"</span><span class="p">,</span><span class="w">
+      </span><span class="n">timezone_offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"-05:00"</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">exchange</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"NASDAQ"</span><span class="p">,</span><span class="w">
+      </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"National Association of Securities Dealers Automated Quotations"</span><span class="p">,</span><span class="w">
+      </span><span class="n">city</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"New York"</span><span class="p">,</span><span class="w">
+      </span><span class="n">country</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"United States of America"</span><span class="p">,</span><span class="w">
+      </span><span class="n">currency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"USD"</span><span class="p">,</span><span class="w">
+      </span><span class="n">timezone_offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"-05:00"</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">bind_rows</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Parse entire wiki url</span><span class="w">
+  </span><span class="n">wiki_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read_html</span><span class="p">(</span><span class="s2">"https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Obtain first row of table, cast as data frame and extract names of symbols </span><span class="w">
+  </span><span class="c1"># and links identifying their respective exchanges.</span><span class="w">
+  </span><span class="n">wiki_symbols</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">html_nodes</span><span class="p">(</span><span class="s2">"td:nth-child(1) .text"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="n">data.frame</span><span class="p">(</span><span class="w">
+        </span><span class="n">symbol</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+          </span><span class="n">html_text</span><span class="p">(),</span><span class="w">
+        </span><span class="n">exchange</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+          </span><span class="n">html_attr</span><span class="p">(</span><span class="s2">"href"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+          </span><span class="n">str_extract</span><span class="p">(</span><span class="s2">"[^https://www.].?[a-z-_]*"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+          </span><span class="n">toupper</span><span class="p">(),</span><span class="w">
+        </span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="w">
+      </span><span class="p">)</span><span class="w">
+    </span><span class="p">}</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">left_join</span><span class="p">(</span><span class="n">exchanges</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">transmute</span><span class="p">(</span><span class="n">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">symbol</span><span class="p">,</span><span class="w">
+              </span><span class="n">abbreviation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">exchange</span><span class="p">,</span><span class="w">
+              </span><span class="n">name</span><span class="p">,</span><span class="w">
+              </span><span class="n">city</span><span class="p">,</span><span class="w">
+              </span><span class="n">country</span><span class="p">,</span><span class="w">
+              </span><span class="n">currency</span><span class="p">,</span><span class="w">
+              </span><span class="n">timezone_offset</span><span class="p">,</span><span class="w">
+              </span><span class="n">created_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+              </span><span class="n">last_updated_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Function inserting exchanges into postgresql database</span><span class="w">
+</span><span class="n">insert_exchanges</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">exchanges</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Get unique exchange names</span><span class="w">
+  </span><span class="n">exchanges</span><span class="w"> </span><span class="o">%&lt;&gt;%</span><span class="w">
+    </span><span class="n">select</span><span class="p">(</span><span class="o">-</span><span class="n">ticker</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">unique</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Paste exchange names and values to single strings</span><span class="w">
+  </span><span class="n">ex_names</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">names</span><span class="p">(</span><span class="n">exchanges</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">", "</span><span class="p">)</span><span class="w">
+  </span><span class="n">ex_values</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">apply</span><span class="p">(</span><span class="n">exchanges</span><span class="p">,</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">paste</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"', '"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"'), ('"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"('"</span><span class="p">,</span><span class="w"> </span><span class="n">.</span><span class="p">,</span><span class="w"> </span><span class="s2">"')"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Create sql query</span><span class="w">
+  </span><span class="n">query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"insert into equities.exchange"</span><span class="p">,</span><span class="w">
+                 </span><span class="s2">"("</span><span class="p">,</span><span class="w">
+                 </span><span class="n">ex_names</span><span class="p">,</span><span class="w">
+                 </span><span class="s2">")"</span><span class="p">,</span><span class="w">
+                 </span><span class="s2">"values"</span><span class="p">,</span><span class="w">
+                 </span><span class="n">ex_values</span><span class="p">,</span><span class="w">
+                 </span><span class="s2">";"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Set connection, sedn query and close connection</span><span class="w">
+  </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">(</span><span class="s2">"securities"</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">pwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w">
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">)</span><span class="w">
+  </span><span class="n">odbcClose</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Function inserting symbols into postgresql securities database</span><span class="w">
+</span><span class="n">insert_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">symbols</span><span class="p">,</span><span class="w"> </span><span class="n">exchanges</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Get exchange names</span><span class="w">
+  </span><span class="n">ex_names</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">exchanges</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">select</span><span class="p">(</span><span class="o">-</span><span class="n">ticker</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="nf">names</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">", "</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># query to obtain exchange ID's in order to populate foreign key table</span><span class="w">
+  </span><span class="n">ex_query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"select id_exchange,"</span><span class="p">,</span><span class="w">
+                    </span><span class="n">ex_names</span><span class="p">,</span><span class="w">
+                    </span><span class="s2">"from equities.exchange;"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Connect to database and send query</span><span class="w">
+  </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">(</span><span class="s2">"securities"</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">pwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w">
+  </span><span class="n">ex</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">ex_query</span><span class="p">,</span><span class="w"> </span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Join exchange id's on symbols and obtain dataframe to populate database table</span><span class="w">
+  </span><span class="n">sym</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">symbols</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">inner_join</span><span class="p">(</span><span class="n">exchanges</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">select</span><span class="p">(</span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="n">abbreviation</span><span class="p">),</span><span class="w">
+               </span><span class="n">by</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="s2">"ticker"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"ticker"</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">inner_join</span><span class="p">(</span><span class="n">ex</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">select</span><span class="p">(</span><span class="n">abbreviation</span><span class="p">,</span><span class="w"> </span><span class="n">id_exchange</span><span class="p">),</span><span class="w">
+               </span><span class="n">by</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="s2">"abbreviation"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"abbreviation"</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">transmute</span><span class="p">(</span><span class="n">id_exchange</span><span class="p">,</span><span class="w">
+              </span><span class="n">ticker</span><span class="p">,</span><span class="w">
+              </span><span class="n">instrument</span><span class="p">,</span><span class="w">
+              </span><span class="n">name</span><span class="p">,</span><span class="w">
+              </span><span class="n">sector</span><span class="p">,</span><span class="w">
+              </span><span class="n">currency</span><span class="p">,</span><span class="w">
+              </span><span class="n">created_datetime</span><span class="p">,</span><span class="w">
+              </span><span class="n">last_updated_datetime</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Paste symbol column names and values to single strings</span><span class="w">
+  </span><span class="n">sym_names</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sym</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="nf">names</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">", "</span><span class="p">)</span><span class="w">
+  </span><span class="n">sym_data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sym</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">str_replace_all</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="s2">"'"</span><span class="p">,</span><span class="w"> </span><span class="s2">" "</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">apply</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">paste</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"', '"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"'), ('"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"('"</span><span class="p">,</span><span class="w"> </span><span class="n">.</span><span class="p">,</span><span class="w"> </span><span class="s2">"')"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Create sql query</span><span class="w">
+  </span><span class="n">sym_query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"insert into equities.symbol"</span><span class="p">,</span><span class="w">
+                     </span><span class="s2">"("</span><span class="p">,</span><span class="w">
+                     </span><span class="n">sym_names</span><span class="p">,</span><span class="w">
+                     </span><span class="s2">")"</span><span class="p">,</span><span class="w">
+                     </span><span class="s2">"values"</span><span class="p">,</span><span class="w">
+                     </span><span class="n">sym_data</span><span class="p">,</span><span class="w">
+                     </span><span class="s2">";"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Send query and close connection</span><span class="w">
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">sym_query</span><span class="p">)</span><span class="w">
+  </span><span class="n">odbcClose</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Run functions</span><span class="w">
+</span><span class="n">get_exchanges</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">insert_exchanges</span><span class="p">(</span><span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Insert user"</span><span class="p">,</span><span class="w">
+                   </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Insert password"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">get_symbols</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">insert_symbols</span><span class="p">(</span><span class="n">get_exchanges</span><span class="p">(),</span><span class="w">
+                 </span><span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Insert user"</span><span class="p">,</span><span class="w">
+                 </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Insert password"</span><span class="p">)</span><span class="w">
+
+</span></code></pre></div></div>
+
+<p>Of course the user and password information should be replaced..</p>
+
+<h2 id="obtaining-stock-qoutes">Obtaining Stock Qoutes</h2>
+
+<p>Finally, we turn towards obtaining the actual stock quotes. I do this using the <a href="http://finance.yahoo.com/">Yahoo Finance</a> API. It is by far the easiest way to obtain the quotes, as the individual series are easy to identify using the ticker symbols and the data returned in a nice <a href="http://www.json.org/">JSON</a> format. First however, I populate the data vendor table using the function given below.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Insert a data vendor to the database</span><span class="w">
+</span><span class="n">insert_data_vendor</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">data_vendor</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Get current time</span><span class="w">
+  </span><span class="n">current_time</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">Sys.time</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Create query to populate the postgresql database</span><span class="w">
+  </span><span class="n">query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"insert into equities.data_vendor "</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"(name, website_url, support_email, created_datetime, last_updated_datetime)"</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"values "</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"('"</span><span class="p">,</span><span class="w">
+                  </span><span class="n">paste</span><span class="p">(</span><span class="n">data_vendor</span><span class="o">$</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">data_vendor</span><span class="o">$</span><span class="n">website_url</span><span class="p">,</span><span class="w">
+                        </span><span class="n">data_vendor</span><span class="o">$</span><span class="n">support_email</span><span class="p">,</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+                        </span><span class="n">sep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"', '"</span><span class="p">),</span><span class="w">
+                  </span><span class="s2">"');"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Connect to database, send query and close connection.</span><span class="w">
+  </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">(</span><span class="s2">"securities"</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">pwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w">
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">)</span><span class="w">
+  </span><span class="n">odbcClose</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="n">data_vendor</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">data.frame</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Yahoo Finance"</span><span class="p">,</span><span class="w">
+                          </span><span class="n">website_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://finance.yahoo.com"</span><span class="p">,</span><span class="w">
+                          </span><span class="n">support_email</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"None"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">insert_data_vendor</span><span class="p">(</span><span class="n">data_vendor</span><span class="p">,</span><span class="w"> </span><span class="s2">"User Name"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Password"</span><span class="p">)</span><span class="w">
+
+</span></code></pre></div></div>
+
+<p>Next we obtain the prices. The function and function call is given below. Note that the function checks against the database in order to remove doublets. This functionality could also be implemented in the other functions, should the need arise, (it probably will).</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Insert stock quotes function</span><span class="w">
+</span><span class="n">insert_stock_quotes</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">date_from</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"2016-08-01"</span><span class="p">,</span><span class="w"> </span><span class="n">date_to</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Sys.Date</span><span class="p">(),</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="c1"># Set current time</span><span class="w">
+  </span><span class="n">current_time</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">Sys.time</span><span class="p">()</span><span class="w">
+  
+  </span><span class="c1"># Symbols query</span><span class="w">
+  </span><span class="n">sym_query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"select id_symbol, ticker, instrument, name, sector, currency from equities.symbol;"</span><span class="w">
+  
+  </span><span class="c1"># Vendor query</span><span class="w">
+  </span><span class="n">ven_query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"select id_data_vendor from equities.data_vendor where name = 'Yahoo Finance';"</span><span class="w">
+  
+  </span><span class="c1"># Connect to database and send queries</span><span class="w">
+  </span><span class="n">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">odbcConnect</span><span class="p">(</span><span class="s2">"securities"</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">pwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w">
+  </span><span class="n">sym</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">sym_query</span><span class="p">,</span><span class="w"> </span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+  </span><span class="n">ven</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">ven_query</span><span class="p">,</span><span class="w"> </span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Extract ticker symbols</span><span class="w">
+  </span><span class="n">ticker</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sym</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+    </span><span class="n">ticker</span><span class="w">
+  
+  </span><span class="c1"># Iterate over each symbol.</span><span class="w">
+  </span><span class="n">json_res</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">lapply</span><span class="p">(</span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+    
+    </span><span class="c1"># Paste ticker symbols to construct call to Yahoo API</span><span class="w">
+    </span><span class="n">url</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste0</span><span class="p">(</span><span class="s1">'https://query.yahooapis.com/v1/public/yql?q=select+*+from+yahoo.finance.historicaldata+where+symbol+in+("'</span><span class="p">,</span><span class="w">
+                  </span><span class="n">x</span><span class="p">,</span><span class="w">
+                  </span><span class="s1">'")+and+startDate="'</span><span class="p">,</span><span class="w">
+                  </span><span class="n">date_from</span><span class="p">,</span><span class="w">
+                  </span><span class="s1">'"+and+endDate="'</span><span class="p">,</span><span class="w">
+                  </span><span class="n">date_to</span><span class="p">,</span><span class="w">
+                  </span><span class="s1">'"&amp;format=json&amp;diagnostics=true&amp;env=store://datatables.org/alltableswithkeys&amp;callback='</span><span class="p">)</span><span class="w">
+    
+    </span><span class="c1"># Get prices and convert result from json to R list.</span><span class="w">
+    </span><span class="n">json</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">GET</span><span class="p">(</span><span class="n">url</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">content</span><span class="p">(</span><span class="n">as</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"text"</span><span class="p">,</span><span class="w"> </span><span class="n">encoding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"UTF-8"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">fromJSON</span><span class="p">()</span><span class="w">
+    
+    </span><span class="n">json</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+      </span><span class="n">query</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+      </span><span class="n">results</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+      </span><span class="n">quote</span><span class="w">
+    
+  </span><span class="p">})</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">bind_rows</span><span class="p">()</span><span class="w">
+  
+  
+  </span><span class="c1"># Extract prices from list object and join to get id_symbol foreign key</span><span class="w">
+  </span><span class="n">res</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">json_res</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">transmute</span><span class="p">(</span><span class="n">id_data_vendor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ven</span><span class="o">$</span><span class="n">id_data_vendor</span><span class="p">,</span><span class="w">
+              </span><span class="n">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Symbol</span><span class="p">,</span><span class="w">
+              </span><span class="n">date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Date</span><span class="p">,</span><span class="w">
+              </span><span class="n">created_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+              </span><span class="n">last_updated_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_time</span><span class="p">,</span><span class="w">
+              </span><span class="n">open</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Open</span><span class="p">,</span><span class="w">
+              </span><span class="n">high</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">High</span><span class="p">,</span><span class="w">
+              </span><span class="n">low</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Low</span><span class="p">,</span><span class="w">
+              </span><span class="n">close</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w">
+              </span><span class="n">adj_close</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Adj_Close</span><span class="p">,</span><span class="w">
+              </span><span class="n">volume</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Volume</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">inner_join</span><span class="p">(</span><span class="n">sym</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                 </span><span class="n">select</span><span class="p">(</span><span class="n">id_symbol</span><span class="p">,</span><span class="w"> </span><span class="n">ticker</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">select</span><span class="p">(</span><span class="o">-</span><span class="n">ticker</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Concatenate to string</span><span class="w">
+  </span><span class="n">res_string</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">res</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">apply</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">paste</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"', '"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste</span><span class="p">(</span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"'), ('"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"('"</span><span class="p">,</span><span class="w"> </span><span class="n">.</span><span class="p">,</span><span class="w"> </span><span class="s2">"')"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Delete existing data</span><span class="w">
+  </span><span class="n">del</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"delete from equities.daily_price where date between '"</span><span class="p">,</span><span class="w">
+                </span><span class="n">date_from</span><span class="p">,</span><span class="w">
+                </span><span class="s2">"' and '"</span><span class="p">,</span><span class="w">
+                </span><span class="n">date_to</span><span class="p">,</span><span class="w">
+                </span><span class="s2">"' and id_symbol in ('"</span><span class="p">,</span><span class="w">
+                </span><span class="n">paste</span><span class="p">(</span><span class="n">res</span><span class="o">$</span><span class="n">id_symbol</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unique</span><span class="p">,</span><span class="w"> </span><span class="n">sep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">', '</span><span class="p">),</span><span class="w">
+                </span><span class="s2">"')"</span><span class="p">)</span><span class="w">
+  
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">del</span><span class="p">)</span><span class="w">
+  
+  </span><span class="c1"># Insert new data</span><span class="w">
+  </span><span class="n">query</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste0</span><span class="p">(</span><span class="s2">"insert into equities.daily_price "</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"(id_data_vendor, date, created_datetime, last_updated_datetime, open, high, low, close, adj_close, volume, id_symbol)"</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"values "</span><span class="p">,</span><span class="w">
+                  </span><span class="n">res_string</span><span class="p">)</span><span class="w">
+    
+  </span><span class="n">sqlQuery</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">)</span><span class="w">
+  </span><span class="n">odbcClose</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span><span class="w">
+  
+</span><span class="p">}</span><span class="w">
+
+</span><span class="c1"># Insert stock quotes function</span><span class="w">
+</span><span class="n">insert_stock_quotes</span><span class="p">(</span><span class="n">date_from</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"2016-08-01"</span><span class="p">,</span><span class="w">
+                    </span><span class="n">date_to</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Sys.Date</span><span class="p">(),</span><span class="w">
+                    </span><span class="n">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"User Name"</span><span class="p">,</span><span class="w">
+                    </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Password"</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>And that’s all. Of course, if one wanted to keep the data updated, the insert_stock_quotes function could be set to run each day via a <a href="https://en.wikipedia.org/wiki/Cron">Cron</a> job.</p>
+
         </li>
     
         <li>
             <h2><a href="/2016/05/05/a-3-d-view-of-the-us-treasury-yield-curve-in-r.html">A 3 D View Of The Us Treasury Yield Curve In R</a></h2>
             <p>Some time ago, I was made aware of the brilliant <a href="http://www.nytimes.com/interactive/2015/03/19/upshot/3d-yield-curve-economic-growth.html">3-D view of the US treasury yield curve</a> that <a href="http://driven-by-data.net/">Gregor Aisch</a> had made for <a href="http://www.nytimes.com">New York Times</a>. In my opinion this is a brilliant example of how 3-D graphs in rare cases can be a viable way to visualize data.</p>
+
+<p>For some time, I have been wanting to see how such a 3-D plot of the US treasury yield curve could be constructed in R. Finally, the other day, I had the time to sit down and consider it. First I needed to get hands on the actual data. A number of sources are available, but actually the <a href="https://www.treasury.gov/Pages/default.aspx">Treasury Department</a> itself provides a daily XML feed with the data available <a href="https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yield">here</a>. Thus it was easy to write a script to get the data using <a href="https://github.com/hadley/xml2"><code class="highlighter-rouge">xml2</code></a>, <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="highlighter-rouge">magrittr</code></a> and <a href="https://github.com/hadley/dplyr"><code class="highlighter-rouge">dplyr</code></a>.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">magrittr</span><span class="p">,</span><span class="w"> </span><span class="n">`%&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%$%`</span><span class="p">,</span><span class="w"> </span><span class="n">set_names</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">xml2</span><span class="p">,</span><span class="w"> </span><span class="n">read_xml</span><span class="p">,</span><span class="w"> </span><span class="n">xml_find_all</span><span class="p">,</span><span class="w"> </span><span class="n">xml_children</span><span class="p">,</span><span class="w"> </span><span class="n">xml_text</span><span class="p">,</span><span class="w"> </span><span class="n">xml_name</span><span class="p">)</span><span class="w">
+</span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">dplyr</span><span class="p">,</span><span class="w"> </span><span class="n">bind_rows</span><span class="p">,</span><span class="w"> </span><span class="n">select</span><span class="p">,</span><span class="w"> </span><span class="n">arrange</span><span class="p">)</span><span class="w">
+
+</span><span class="n">yield_url</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"http://data.treasury.gov/feed.svc/DailyTreasuryYieldCurveRateData"</span><span class="w">
+
+</span><span class="n">yield_data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read_xml</span><span class="p">(</span><span class="n">yield_url</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">xml_find_all</span><span class="p">(</span><span class="s2">"//*[name()='m:properties']"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">lapply</span><span class="p">(</span><span class="n">xml_children</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">lapply</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="n">lapply</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="n">y</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+        </span><span class="n">xml_text</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+        </span><span class="p">{</span><span class="w">
+          </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">xml_name</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Id"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nf">as.integer</span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w">
+          </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">xml_name</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"NEW_DATE"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="n">as.Date</span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w">
+          </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nf">as.numeric</span><span class="p">(</span><span class="n">.</span><span class="p">)</span><span class="w">
+          </span><span class="p">}</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">})</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">set_names</span><span class="p">(</span><span class="n">xml_name</span><span class="p">(</span><span class="n">x</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">as.data.frame</span><span class="p">(</span><span class="n">stringsAsFactors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+  </span><span class="p">})</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">bind_rows</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">select</span><span class="p">(</span><span class="o">-</span><span class="n">BC_30YEARDISPLAY</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">arrange</span><span class="p">(</span><span class="n">NEW_DATE</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Here I also used the package <a href="https://cran.r-project.org/web/packages/import/vignettes/import.html"><code class="highlighter-rouge">import</code></a>, which makes it possible to import objects into a given R session in a very Python like way. I like this a lot as</p>
+
+<ol>
+  <li>Often you only need to utilize a limited number of functions from a given package. As such, there is really no reason to import the entire library.</li>
+  <li>More importantly, it gives the reader of the script a nice overview of which packages the functions in the script comes from.</li>
+</ol>
+
+<p>Next, how to create the actual plot? There exists a number of R packages for plotting 3-D visualizations. I have given a number of them below.</p>
+
+<ul>
+  <li>The <a href="https://stat.ethz.ch/R-manual/R-devel/library/graphics/html/persp.html"><code class="highlighter-rouge">persp()</code></a> function in the base R package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/plot3D/index.html"><code class="highlighter-rouge">plot3D</code></a> package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/scatterplot3d/index.html"><code class="highlighter-rouge">scatterplot3d</code></a> package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/rgl/index.html"><code class="highlighter-rouge">rgl</code></a> package.</li>
+</ul>
+
+<p>Especially <code class="highlighter-rouge">plot3D</code> has traditionally been used to create static 3-D visualizations. However, in order to make the 3-D graphic as comprehensible as possible, it needs to be dynamic. That is the reader/user has to be able to turn and zoom in the graphic and have labels appearing when hovering over a given point. This means utilizing some sort of JavaScript graphic library. Here <a href="https://d3js.org/">D3</a> is the obvious choice. Luckily in R, we can use the awesome integration of <a href="https://plot.ly/">Plotly</a> in R, to ultimately create a vizualisation that is very close to the one given in the New York Times article. (Digging in the source code of the page seems to reveal that that the original visualization was made using <a href="https://www.adobe.com/products/illustrator.html">Adobe Illustrator</a>).</p>
+
+<p>Making the 3-D view of the yield curve in R turned out to be a simple exercise using the <a href="https://plot.ly/r/"><code class="highlighter-rouge">plotly</code></a> package. Actually one of the <a href="https://plot.ly/~chris/folder/home">founders</a> of Plotly had already made an example, and I basically took his JavaScript code and implemented a very similar solution using the Plotly R API. The code is given below.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">plotly</span><span class="p">,</span><span class="w"> </span><span class="n">plot_ly</span><span class="p">,</span><span class="w"> </span><span class="n">layout</span><span class="p">)</span><span class="w">
+
+</span><span class="n">Sys.setenv</span><span class="p">(</span><span class="s2">"plotly_username"</span><span class="o">=</span><span class="s2">"UserName"</span><span class="p">)</span><span class="w">
+</span><span class="n">Sys.setenv</span><span class="p">(</span><span class="s2">"plotly_api_key"</span><span class="o">=</span><span class="s2">"ApiKey"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">yield_data</span><span class="w"> </span><span class="o">%$%</span><span class="w">
+  </span><span class="n">NEW_DATE</span><span class="w">
+
+</span><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="s2">"1 Month"</span><span class="p">,</span><span class="w"> </span><span class="s2">"3 Month"</span><span class="p">,</span><span class="w"> </span><span class="s2">"6 Month"</span><span class="p">,</span><span class="w"> </span><span class="s2">"1 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"2 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"3 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"5 Year"</span><span class="p">,</span><span class="w"> 
+       </span><span class="s2">"7 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"10 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"20 Year"</span><span class="p">,</span><span class="w"> </span><span class="s2">"30 Year"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">z</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">yield_data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">select</span><span class="p">(</span><span class="n">BC_1MONTH</span><span class="o">:</span><span class="n">BC_30YEAR</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">as.matrix</span><span class="p">()</span><span class="w">
+
+</span><span class="n">plot</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">plot_ly</span><span class="p">(</span><span class="n">yield_data</span><span class="p">,</span><span class="w">
+                </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w">
+                </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w">
+                </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">z</span><span class="p">,</span><span class="w">
+                </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"surface"</span><span class="p">,</span><span class="w">
+                </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"yield"</span><span class="p">,</span><span class="w">
+                </span><span class="n">colorscale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+                  </span><span class="nf">list</span><span class="p">(</span><span class="w">
+                    </span><span class="m">0</span><span class="p">,</span><span class="w">
+                    </span><span class="s2">"rgb(231, 245, 255)"</span><span class="w">
+                  </span><span class="p">),</span><span class="w">
+                  </span><span class="n">list</span><span class="w"> </span><span class="p">(</span><span class="w">
+                    </span><span class="m">1</span><span class="p">,</span><span class="w">
+                    </span><span class="s2">"rgb(31, 119, 180)"</span><span class="w">
+                  </span><span class="p">)</span><span class="w">
+                </span><span class="p">),</span><span class="w">
+                </span><span class="n">showscale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+                </span><span class="n">lighting</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+                  </span><span class="n">fresnel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.01</span><span class="p">,</span><span class="w">
+                  </span><span class="n">specular</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.01</span><span class="p">,</span><span class="w">
+                  </span><span class="n">ambient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.95</span><span class="p">,</span><span class="w">
+                  </span><span class="n">diffuse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.99</span><span class="p">,</span><span class="w">
+                  </span><span class="n">roughness</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.01</span><span class="w">
+                </span><span class="p">),</span><span class="w">
+                </span><span class="n">zmax</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">10.0</span><span class="p">,</span><span class="w"> 
+                </span><span class="n">zmin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">)</span><span class="w">
+
+</span><span class="n">plot</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">layout</span><span class="p">(</span><span class="w">
+  </span><span class="n">plot</span><span class="p">,</span><span class="w">
+  </span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"US Treasury Yield Curve"</span><span class="p">,</span><span class="w">
+  </span><span class="n">autosize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+  </span><span class="n">scene</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+    </span><span class="n">xaxis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">zeroline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+      </span><span class="n">showgrid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w">
+      </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"category"</span><span class="p">,</span><span class="w">
+      </span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">""</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="n">yaxis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">zeroline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+      </span><span class="n">showgrid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w">
+      </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"date"</span><span class="p">,</span><span class="w">
+      </span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">""</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"surface"</span><span class="p">,</span><span class="w">
+    </span><span class="n">zaxis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">zeroline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+      </span><span class="n">showgrid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w">
+      </span><span class="n">ticksuffix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"%"</span><span class="p">,</span><span class="w">
+      </span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Yield"</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="n">aspectmode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"manual"</span><span class="p">,</span><span class="w">
+    </span><span class="n">camera</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">eye</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+        </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">-0.03</span><span class="p">,</span><span class="w">
+        </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">-2.7</span><span class="p">,</span><span class="w">
+        </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1.3</span><span class="w">
+      </span><span class="p">),</span><span class="w">
+      </span><span class="n">up</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+        </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w">
+        </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w">
+        </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="w">
+      </span><span class="p">),</span><span class="w">
+      </span><span class="n">center</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+        </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w">
+        </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w">
+        </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="w">
+      </span><span class="p">)</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+    </span><span class="n">aspectratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+      </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w">
+      </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w">
+      </span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">),</span><span class="w">
+  </span><span class="n">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">350</span><span class="p">,</span><span class="w">
+  </span><span class="n">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">700</span><span class="p">,</span><span class="w">
+  </span><span class="n">showlegend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w">
+  </span><span class="n">margin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+    </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">20</span><span class="p">,</span><span class="w">
+    </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">60</span><span class="p">,</span><span class="w">
+    </span><span class="n">l</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">20</span><span class="p">,</span><span class="w">
+    </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">60</span><span class="w">
+  </span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w">
+
+</span><span class="n">plot</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Yielding the awesome graphic given below.</p>
+
+<p><a href="https://plot.ly/~AndreasKeller/65/" target="_blank" title="US Treasury Yield Curve" style="display: block; text-align: center;"><img src="https://plot.ly/~AndreasKeller/65.png" alt="US Treasury Yield Curve" style="max-width: 100%;width: 1200px;" width="1200" onerror="this.onerror=null;this.src='https://plot.ly/404.png';" /></a>
+    <script data-plotly="AndreasKeller:65" src="https://plot.ly/embed.js" async=""></script></p>
 
         </li>
     
@@ -81,11 +789,332 @@
             <h2><a href="/2016/04/05/my-presentation-at-copenhagenr-user-group.html">My Presentation At Copenhagenr User Group</a></h2>
             <p>Last week I had the pleasure of presenting a side project in front of a bunch of R enthusiast at the monthly <a href="http://www.meetup.com/CopenhagenR-useR-Group/">CopenhagenR useR Group meeting</a>, this time hosted at Microsoft Denmark. I gave a description of the event in a <a href="http://www.akll.io/2016/3/19/speaking-copenhagenr-user-group-revoluti/">previous post</a>. As usual, it was a cool meetup, and I really enjoyed presenting in front of such skilled people. Presenting to a group of peers really gives one the change to “nerd out”, and not dumb down on the technical stuff, which I also relished. The slides for my presentation are available for download <a href="https://dl.dropboxusercontent.com/s/4h9hv9zho9vvqo5/mycroftr.pdf">here</a> and the app I showcased is hosted <a href="http://bit.ly/1NINHEF">here</a>. Below I give a short summary of the presentation.</p>
 
+<h2 id="mycroftr"><code class="highlighter-rouge">mycroftr</code></h2>
+
+<p>In the talk I wanted to highlight some things about R, that I find really cool, and that I thought might be unfamiliar to most people. Of course I had a time constraint, so I also had to stay within what could reasonably be presented in 30 minutes, (I might have ended up going a bit over time). I knew I wanted to talk about a Shiny app project that has been in ongoing development for quite some time, so I ended up picking the two coolest features of this app. These being</p>
+
+<ol>
+  <li>Easy implementation of the JavaScript graphing library <a href="https://www.highcharts.com/">Highcharts</a> in a Shiny app using the package <a href="http://jkunst.com/highcharter/"><code class="highlighter-rouge">highcharter</code></a> by <a href="http://jkunst.com/">Joshua Kunst</a>.</li>
+  <li>How to build a dynamic UI in a <a href="http://shiny.rstudio.com/"><code class="highlighter-rouge">Shiny</code></a> App for easy scaling of input data.</li>
+</ol>
+
+<p>The inspiration for the app hails from the financial industry, where the <a href="http://www.bloomberg.com/professional/products-solutions/">Bloomberg Terminal</a> is a popular tool. Using the custom desktop environment <a href="http://www.bloomberg.com/professional/custom-desktop/">Launchpad</a>, it is possible to build a dashboard with important data and select market news. However, not having $24,000 for a yearly license, I thought I would attempt to create my own using data available for free. Also, it would be nice to create something that doesn’t look like an 80s desktop application.</p>
+
+<p><img src="https://dl.dropboxusercontent.com/s/mlqhv2aiose47oq/bloomberg_launchpad_example_large.png" alt="Bloomberg Launchpad - Those are some nice color" /></p>
+
+<p>Before I started working on the app, I made the following list of requirements. The app should be driven by free online data such as what is available from</p>
+
+<ul>
+  <li><a href="https://www.quandl.com/"><code class="highlighter-rouge">Quandl</code></a></li>
+  <li><a href="http://www.quantmod.com/"><code class="highlighter-rouge">quantmod</code></a></li>
+  <li>Various APIs such as the <a href="http://www.dst.dk/da/Statistik/statistikbanken/api">one offered by Statistics Denmark</a>.</li>
+</ul>
+
+<p>The charting should be done using a interactive charting framework such as</p>
+
+<ul>
+  <li><a href="https://www.highcharts.com/">Highcharts</a></li>
+  <li><a href="https://d3js.org/">D3</a></li>
+  <li><a href="https://plot.ly/"><code class="highlighter-rouge">plotly</code></a></li>
+</ul>
+
+<p>I should be able to feed the app a list of data, and it should generate the graphs automatically depending on the data it has been fed. The reason for this is</p>
+
+<ul>
+  <li>It should be easy to scale the app using new found data.</li>
+  <li>It should be easy to add data by just appending new data sets, such as a Quandl code, to a static file.</li>
+</ul>
+
+<p>So that is a quick overview of the project. The current status is, that the The “template” ui has been completed. Currently needing to find data and feed it (and add graph types if needed). I have decided to call the app and accompanying package <code class="highlighter-rouge">mycroftr</code>, inspired by the <a href="https://en.wikipedia.org/wiki/Mycroft_Holmes">brother</a> of <a href="https://en.wikipedia.org/wiki/Sherlock_Holmes">one of my favourite characters</a> in literature, of whom it is said in The Adventure of the Bruce-Partington Plans</p>
+
+<blockquote>
+  <p>He has the tidiest and most orderly brain, with the greatest capacity for storing facts, of any man living. The same great powers which I have turned to the detection of crime he has used for this particular business. The conclusions of every department are passed to him, and he is the central exchange, the clearinghouse, which makes out the balance. All other men are specialists, but his specialism is omniscience. We will suppose that a minister needs information as to a point which involves the Navy, India, Canada and the bimetallic question; he could get his separate advices from various departments upon each, but only Mycroft can focus them all, and say offhand how each factor would affect the other. They began by using him as a short-cut, a convenience; now he has made himself an essential. In that great brain of his everything is pigeon-holed and can be handed out in an instant.</p>
+</blockquote>
+
+<h2 id="highcharter"><code class="highlighter-rouge">highcharter</code></h2>
+
+<p>As mentioned above I chose to integrate the <a href="http://jkunst.com/highcharter/"><code class="highlighter-rouge">highcharter</code></a> package in my app. But why use <a href="https://www.highcharts.com/">Highcharts</a> at all? The reasons I see can be listed as</p>
+
+<ul>
+  <li>The ability to easily create beautiful interactive plots.</li>
+  <li>There are lots of different kinds of plot types available (also plots specialised for finance through <a href="http://www.highcharts.com/products/highstock">Highstocks</a>).</li>
+  <li>Highcharts had a very mature API, excellent documentation and customisation.</li>
+</ul>
+
+<p>So how to implement Highcharts in R, and specifically in a Shiny app? Until now there has basically been three solutions to implement Highcharts
+in R</p>
+
+<ul>
+  <li>Use the package <a href="http://rcharts.io/"><code class="highlighter-rouge">rCharts</code></a>, which uses a lattice style approach.
+    <ul>
+      <li>Last commit on Github was 2 years ago.</li>
+    </ul>
+  </li>
+  <li>Use the package <a href="https://github.com/jcizel/highchartR"><code class="highlighter-rouge">highchartR</code></a> of which I’m unfamiliar
+    <ul>
+      <li>Last commit on Github was 1 year ago.</li>
+    </ul>
+  </li>
+  <li>Write a JS wrapper yourself.</li>
+</ul>
+
+<p>I started on the last part, but then <code class="highlighter-rouge">highcharter</code> was <a href="http://jkunst.com/r/presenting-highcharter/">released</a> in January. <code class="highlighter-rouge">highcharter</code> is by far (in my opinion) the best Highcharts implementation so far. The package is essentially a wrapper around Highcharts. All plot types of Highcharts are available, though they might take some work to implement. And best of all it uses a familiar layering approach in building graphs. That is <code class="highlighter-rouge">highcharter</code> is a bit like <a href="http://ggplot2.org/"><code class="highlighter-rouge">ggplot2</code></a>, but without non-standard evaluation (as the author puts it himself. The layering is done using the the <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="highlighter-rouge">magrittr</code></a> pibe. Finally it is possible to build custom themes, which is also very cool. I gave some examples of plots and how to create them, which I have presented below.</p>
+
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Get data</span><span class="w">
+
+</span><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+</span><span class="n">library</span><span class="p">(</span><span class="n">Quandl</span><span class="p">)</span><span class="w">
+
+</span><span class="n">start_date</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">as.Date</span><span class="p">(</span><span class="s2">"2015-01-01"</span><span class="p">)</span><span class="w">
+</span><span class="n">end_date</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">as.Date</span><span class="p">(</span><span class="s2">"2015-12-31"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+  </span><span class="n">DowJones</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"YAHOO/INDEX_DJI"</span><span class="p">,</span><span class="w"> </span><span class="n">start_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">start_date</span><span class="p">,</span><span class="w">
+                    </span><span class="n">end_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">end_date</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"monthly"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">),</span><span class="w">
+  </span><span class="n">SP500</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"YAHOO/INDEX_GSPC"</span><span class="p">,</span><span class="w"> </span><span class="n">start_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">start_date</span><span class="p">,</span><span class="w">
+                 </span><span class="n">end_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">end_date</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"monthly"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">),</span><span class="w">
+  </span><span class="n">DAX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"YAHOO/INDEX_GDAXI"</span><span class="p">,</span><span class="w"> </span><span class="n">start_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">start_date</span><span class="p">,</span><span class="w">
+               </span><span class="n">end_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">end_date</span><span class="p">,</span><span class="w"> </span><span class="n">collapse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"monthly"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">rbind_all</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">transmute</span><span class="p">(</span><span class="n">Date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">format</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="s2">"%b"</span><span class="p">),</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Price</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">round</span><span class="p">(</span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">))</span><span class="w">
+
+
+</span><span class="c1"># Line plot</span><span class="w">
+
+</span><span class="n">library</span><span class="p">(</span><span class="n">highcharter</span><span class="p">)</span><span class="w">
+
+</span><span class="n">chart</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">highchart</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">))</span><span class="w">
+
+</span><span class="n">chart</span><span class="w">
+
+
+</span><span class="c1"># Line plot - multiple lines</span><span class="w">
+
+</span><span class="n">library</span><span class="p">(</span><span class="n">highcharter</span><span class="p">)</span><span class="w">
+
+</span><span class="n">chart</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_title</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Index values"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_xAxis</span><span class="p">(</span><span class="n">categories</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="o">$</span><span class="n">Date</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                 </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                 </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_yAxis</span><span class="p">(</span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Value"</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">hc_add_theme</span><span class="p">(</span><span class="n">hc_theme_sandsignika</span><span class="p">())</span><span class="w">
+
+
+</span><span class="c1"># Line plot and column plot</span><span class="w">
+
+</span><span class="n">highchart</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_title</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Index values"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"DAX"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">),</span><span class="w">
+               </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"column"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_xAxis</span><span class="p">(</span><span class="n">categories</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="o">$</span><span class="n">Date</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Dow Jones Industrial Average"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">),</span><span class="w">
+               </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"column"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">,</span><span class="w">
+               </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"S&amp;P 500"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`$`</span><span class="p">(</span><span class="n">Price</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_yAxis</span><span class="p">(</span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Value"</span><span class="p">))</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">hc_add_theme</span><span class="p">(</span><span class="n">hc_theme_sandsignika</span><span class="p">())</span><span class="w">
+
+
+</span><span class="c1"># Tree map</span><span class="w">
+
+</span><span class="n">library</span><span class="p">(</span><span class="n">treemap</span><span class="p">)</span><span class="w">
+</span><span class="n">library</span><span class="p">(</span><span class="n">viridisLite</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="p">(</span><span class="n">GNI2014</span><span class="p">)</span><span class="w">
+
+</span><span class="n">tm</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">treemap</span><span class="p">(</span><span class="n">GNI2014</span><span class="p">,</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="s2">"continent"</span><span class="p">,</span><span class="w"> </span><span class="s2">"iso3"</span><span class="p">),</span><span class="w">
+              </span><span class="n">vSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"population"</span><span class="p">,</span><span class="w"> </span><span class="n">vColor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"GNI"</span><span class="p">,</span><span class="w">
+              </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"value"</span><span class="p">,</span><span class="w"> </span><span class="n">palette</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viridis</span><span class="p">(</span><span class="m">6</span><span class="p">),</span><span class="w">
+              </span><span class="n">draw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span><span class="w">
+</span><span class="n">hc_tm</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">highchart</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_add_serie_treemap</span><span class="p">(</span><span class="n">tm</span><span class="p">,</span><span class="w"> </span><span class="n">allowDrillToNode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w">
+                       </span><span class="n">layoutAlgorithm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"squarified"</span><span class="p">,</span><span class="w">
+                       </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"tmdata"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_title</span><span class="p">(</span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Gross National Income World Data - 2014"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">hc_tooltip</span><span class="p">(</span><span class="n">pointFormat</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"&lt;b&gt;{point.name}&lt;/b&gt;:&lt;br&gt;
+             Pop: {point.value:,.0f}&lt;br&gt;
+             GNI: {point.valuecolor:,.0f}"</span><span class="p">)</span><span class="w">
+
+</span><span class="n">hc_tm</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Every container in the Highcharts API has its own separate <code class="highlighter-rouge">highcharter</code> function. As such, every graph imaginable from the Highcharts website can be recreated in R. Thus it is easy to leverage the extremely powerful chart library that is Highcharts. The charts are easy to implement in a Shiny app through the <code class="highlighter-rouge">renderHighchart()</code> and <code class="highlighter-rouge">highchartOutput()</code> functions.</p>
+
+<h2 id="dynamic-ui-in-shiny">Dynamic UI in Shiny</h2>
+<p>If you are familiar with writing applications in Shiny, you are familiar with the <code class="highlighter-rouge">ui.R</code> and <code class="highlighter-rouge">server.R</code> approach to building apps.</p>
+
+<ul>
+  <li><code class="highlighter-rouge">ui.R</code> is where the interface is defined.</li>
+  <li><code class="highlighter-rouge">server.R</code> handles the server side of the app. Usually data gathering, data manipulation, data modeling and data visualisation.</li>
+</ul>
+
+<p>This approach is however very static, that is for each plot you write a server side component and a UI component. This makes it difficult to scale when you increase the amount of input data. Below is an example of how you would build an app traditionally using this approach. The example is taken from the <a href="http://shiny.rstudio.com/tutorial/lesson1/">RStudio Shiny tutoriual</a>.</p>
+
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
+
+</span><span class="c1"># ui.R</span><span class="w">
+</span><span class="n">shinyUI</span><span class="p">(</span><span class="n">fluidPage</span><span class="p">(</span><span class="w">
+
+  </span><span class="n">titlePanel</span><span class="p">(</span><span class="s2">"Hello Shiny!"</span><span class="p">),</span><span class="w">
+
+  </span><span class="n">sidebarLayout</span><span class="p">(</span><span class="w">
+    </span><span class="n">sidebarPanel</span><span class="p">(</span><span class="w">
+      </span><span class="n">sliderInput</span><span class="p">(</span><span class="s2">"bins"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Number of bins:"</span><span class="p">,</span><span class="w"> </span><span class="n">min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">max</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">50</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">30</span><span class="p">)</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+
+    </span><span class="c1"># Static output displayed</span><span class="w">
+    </span><span class="n">mainPanel</span><span class="p">(</span><span class="w">
+      </span><span class="n">plotOutput</span><span class="p">(</span><span class="s2">"distPlot"</span><span class="p">)</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">)</span><span class="w">
+</span><span class="p">))</span><span class="w">
+
+</span><span class="c1"># server.R</span><span class="w">
+</span><span class="n">shinyServer</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+
+  </span><span class="c1"># Static output generated</span><span class="w">
+  </span><span class="n">output</span><span class="o">$</span><span class="n">distPlot</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderPlot</span><span class="p">({</span><span class="w">
+    </span><span class="n">x</span><span class="w">    </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">faithful</span><span class="p">[,</span><span class="w"> </span><span class="m">2</span><span class="p">]</span><span class="w">  </span><span class="c1"># Old Faithful Geyser data</span><span class="w">
+    </span><span class="n">bins</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">seq</span><span class="p">(</span><span class="nf">min</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="w"> </span><span class="nf">max</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="w"> </span><span class="n">length.out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">bins</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="p">)</span><span class="w">
+
+    </span><span class="c1"># draw the histogram with the specified number of bins</span><span class="w">
+    </span><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">breaks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bins</span><span class="p">,</span><span class="w"> </span><span class="n">col</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'darkgray'</span><span class="p">,</span><span class="w"> </span><span class="n">border</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'white'</span><span class="p">)</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+</span><span class="p">})</span><span class="w">
+</span></code></pre></div></div>
+
+<p>I however want to be able to serve the app a list of data, and have the interface (the plots) adjust accordingly. This is in part inspired by <a href="http://please.hackmyresume.com/">HackMyResume</a>, a project making you able to generate CV from information in a JSON file. So in <code class="highlighter-rouge">Shiny</code> I want to serve the server a list of data, that can be subset through the inputs from the UI, making me able to</p>
+
+<ul>
+  <li>Generate the UI on the server side though the <code class="highlighter-rouge">renderUI()</code> function.</li>
+  <li>Display the UI through the <code class="highlighter-rouge">uiOutput()</code> and leave the rest of the <code class="highlighter-rouge">ui.R</code>
+file as a template.</li>
+</ul>
+
+<p>An example of how to implement this is given below. This code is inspired by <a href="https://gist.github.com/wch/5436415/">this gist</a>.</p>
+
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
+
+</span><span class="c1"># ui.R</span><span class="w">
+</span><span class="n">shinyUI</span><span class="p">(</span><span class="n">fluidPage</span><span class="p">(</span><span class="w">
+
+  </span><span class="n">titlePanel</span><span class="p">(</span><span class="s2">"Hello Shiny!"</span><span class="p">),</span><span class="w">
+
+  </span><span class="n">sidebarLayout</span><span class="p">(</span><span class="w">
+    </span><span class="n">sidebarPanel</span><span class="p">(</span><span class="w">
+      </span><span class="n">selectInput</span><span class="p">(</span><span class="s2">"stock_geography"</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"Select area"</span><span class="p">,</span><span class="w">
+                  </span><span class="nf">names</span><span class="p">(</span><span class="n">get_stock_list</span><span class="p">())),</span><span class="w">
+      </span><span class="n">selectInput</span><span class="p">(</span><span class="s2">"stock_type"</span><span class="p">,</span><span class="w">
+                  </span><span class="s2">"Select chart type"</span><span class="p">,</span><span class="w">
+                  </span><span class="nf">c</span><span class="p">(</span><span class="s2">"Line Plot"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Candlestick"</span><span class="p">),</span><span class="w">
+                  </span><span class="s2">"Candlestick"</span><span class="p">)</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+
+    </span><span class="c1"># Dynamic UI displayed</span><span class="w">
+    </span><span class="n">mainPanel</span><span class="p">(</span><span class="w">
+      </span><span class="n">uiOutput</span><span class="p">(</span><span class="s2">"plots"</span><span class="p">)</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">)</span><span class="w">
+</span><span class="p">))</span><span class="w">
+
+</span><span class="c1"># server.R</span><span class="w">
+</span><span class="n">shinyServer</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+
+  </span><span class="n">data_stock</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">reactive</span><span class="p">({</span><span class="w">
+    </span><span class="c1"># Get data from Quandl based on security type and geographic</span><span class="w">
+    </span><span class="n">lapply</span><span class="p">(</span><span class="n">get_stock_list</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">`[[`</span><span class="p">(</span><span class="n">input</span><span class="o">$</span><span class="n">stock_geography</span><span class="p">),</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="n">Quandl</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"xts"</span><span class="p">)</span><span class="w">
+    </span><span class="p">})</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+  
+  </span><span class="n">output</span><span class="o">$</span><span class="n">plots</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderUI</span><span class="p">({</span><span class="w">
+
+    </span><span class="c1"># Generate list of Highcharts outputs</span><span class="w">
+    </span><span class="n">plot_output_list</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">lapply</span><span class="p">(</span><span class="m">1</span><span class="o">:</span><span class="p">(</span><span class="n">data_stock</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">length</span><span class="p">),</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="n">plotname</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"plot"</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">sep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"_"</span><span class="p">)</span><span class="w">
+      </span><span class="n">highchartOutput</span><span class="p">(</span><span class="n">plotname</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">500</span><span class="p">)</span><span class="w">
+    </span><span class="p">})</span><span class="w">
+
+    </span><span class="c1"># Convert the list to a tagList</span><span class="w">
+    </span><span class="n">do.call</span><span class="p">(</span><span class="n">tagList</span><span class="p">,</span><span class="w"> </span><span class="n">plot_output_list</span><span class="p">)</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+
+  </span><span class="n">observe</span><span class="p">({</span><span class="w">
+    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="p">(</span><span class="n">data_stock</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">length</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w">
+
+      </span><span class="c1"># Need local so that each item gets its own number.</span><span class="w">
+      </span><span class="n">local</span><span class="p">({</span><span class="w">
+        </span><span class="n">x_local</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">x</span><span class="w">
+
+        </span><span class="n">plotname</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">paste</span><span class="p">(</span><span class="s2">"plot"</span><span class="p">,</span><span class="w"> </span><span class="n">x_local</span><span class="p">,</span><span class="w"> </span><span class="n">sep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"_"</span><span class="p">)</span><span class="w">
+
+        </span><span class="n">output</span><span class="p">[[</span><span class="n">plotname</span><span class="p">]]</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderHighchart</span><span class="p">({</span><span class="w">
+
+          </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">input</span><span class="o">$</span><span class="n">stock_type</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Candlestick"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="n">plot_candlestick</span><span class="p">(</span><span class="n">data_stock</span><span class="p">()[</span><span class="n">x_local</span><span class="p">])</span><span class="w">
+          </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">input</span><span class="o">$</span><span class="n">stock_type</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Line Plot"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="n">plot_line</span><span class="p">(</span><span class="n">data_stock</span><span class="p">()[</span><span class="n">x_local</span><span class="p">])</span><span class="w">
+          </span><span class="p">}</span><span class="w">
+        </span><span class="p">})</span><span class="w">
+      </span><span class="p">})</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+</span><span class="p">})</span><span class="w">
+</span></code></pre></div></div>
+
+<p>This finishes the examples from my presentations. The app is currently in development (and very infrequently updated), but a working version of the app can be found <a href="www.apps.akll.io/shiny/mycroftr">here</a> and the code is available at my <a href="https://github.com/AKLLaursen/mycroftr">Github</a>.</p>
+
         </li>
     
         <li>
             <h2><a href="/2016/03/19/speaking-at-copenhagenr-user-group.html">Speaking At Copenhagenr User Group</a></h2>
             <p>On next tuesday, Marts 29, I have been asked to give a small presentation at the <a href="http://www.meetup.com/CopenhagenR-useR-Group/">CopenhagenR useR Group</a> meetup. The description of the event is given <a href="http://www.meetup.com/CopenhagenR-useR-Group/events/229430961/">here</a>, and I have also quoted it below.</p>
+
+<blockquote>
+  <p>It’s exciting times at Microsoft. The acquisition of Revolution was big news last year. Join CopenhagenR @ Microsoft in Lyngby and and get the latest inside info on what Microsoft plans to do. Søren Johansen, Data Scientist at Revolution Microsoft will take a look back at Machine Learning and give an overview of the future of advanced analytics. Microsoft will also give a quick tour of their new office space.</p>
+</blockquote>
+
+<blockquote>
+  <p>In addition to the talk by Søren we will try something new at CopenhagenR. We are going to have a few quick talks that will show case some of the cool projects the danish useRs are working on.</p>
+</blockquote>
+
+<blockquote>
+  <ul>
+    <li>Mikkel Krogsholm, Senior Data Scientist at DAMVAD analytics always has nerdy and fun side projects going on. Join us and hear how Mikkel has mapped out the danish toponymy endings (stednavne endelser).</li>
+    <li>Sebastian Barfort, PhD from Copenhagen University. Sebastian is an avid R useR and has recently held a course where almost 100 student participated and he will share some of his experiences.</li>
+    <li>Andreas Keller Leth Laursen, Economist at the Danish National Bank. Andreas will talk about Shiny applications and showcase an app he is working on, that is aggregating info on global stock- and commodity-markets.</li>
+  </ul>
+</blockquote>
+
+<blockquote>
+  <p>The program:</p>
+</blockquote>
+
+<blockquote>
+  <ul>
+    <li>15:00 Welcome and a short tour of the new Microsoft Office (pardon the pun)</li>
+    <li>15:15 Talk by Søren Johansen</li>
+    <li>16:00 Break with drinks and food</li>
+    <li>16:25 Quick talk: Mikkel Krogsholm</li>
+    <li>16:45 Quick talk: Sebastain Barfort</li>
+    <li>17:05 Quick talk: Andreas Keller Leth Laursen</li>
+    <li>17:20 Networking</li>
+  </ul>
+</blockquote>
 
         </li>
     
@@ -93,11 +1122,305 @@
             <h2><a href="/2016/03/10/presenting-r-with-5-examples.html">Presenting R With 5 Examples</a></h2>
             <p>Yesterday, I finished hosting a short two-day workshop focused on <a href="https://www.r-project.org/">R</a> and <a href="https://www.rstudio.com/">RStudio</a>, which I had prepared for my coworkers at my <a href="http://www.nationalbanken.dk/en/about_danmarks_nationalbank/organisation/Pages/Statistics.aspx">job</a>. It was a great experience with very positive feedback from my colleagues, and something I look forward to repeating.</p>
 
+<p>It is no secret that I am very much a proponent of using R, not only for doing statistical analysis, but for doing everything in, what one could label the statistics “stack.” The statistics stack being a representation of everything a skilled statistician or data scientist needs to be able to do. In my mind, one can partition the statistics stack into:</p>
+
+<ol>
+  <li>Reading data, be it from local files (csv, excel, sas, etc.), a database (SQL, NoSQL, etc.), online sources (Quandl,  web scraping, online APIs, etc.) or something else.</li>
+  <li>The transformation of data, popular known as data munging or data wrangling.</li>
+  <li>Modeling data using both tried and tested models as well as the latest cutting edge models developed by eg. academic researchers.</li>
+  <li>Visualising data.</li>
+  <li>Sharing the data using dynamic reporting or shared dashboards.</li>
+</ol>
+
+<p>When I made the presentation for the workshop, I decided that I wanted to start the first session, an introduction to R, by giving a small example that covers all aforementioned 5 points. The point was to showcase how it is possible to do everything in R and more importantly, how easy it is. Visually in a presentation, I think that it works very well to showcase ease of use, by showing small code snippets and the respective outputs of these snippets. The following examples are what I choose in order to cover the five points.</p>
+
+<p>For showcasing how to read data into R, I call two time series containing the daily historical open, high, low and close prices as well as the volume of the Apple and Microsoft stocks. I do this using the <a href="https://www.quandl.com/tools/r">Quandl package</a>, and do a bit of fiddling with the data using <a href="https://github.com/hadley/dplyr">dplyr</a>. The code is given below.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+</span><span class="n">library</span><span class="p">(</span><span class="n">Quandl</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
+  </span><span class="n">apple</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"WIKI/AAPL"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Apple"</span><span class="p">),</span><span class="w">
+  </span><span class="n">microsoft</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quandl</span><span class="p">(</span><span class="s2">"WIKI/MSFT"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+    </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Microsoft"</span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">bind_rows</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Open</span><span class="p">,</span><span class="w"> </span><span class="n">High</span><span class="p">,</span><span class="w"> </span><span class="n">Low</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">Volume</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">arrange</span><span class="p">(</span><span class="n">Date</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">desc</span><span class="p">())</span><span class="w">
+
+</span><span class="n">head</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Here the sharp minded reader will notice that I have employed the <a href="https://cran.r-project.org/web/packages/magrittr/index.html">magrittr</a> forward pibe operator as well. The output of running the code is displayed below.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: local data frame [6 x 7]
+
+        Date  Open    High   Low Close   Volume      Name
+      (date) (dbl)   (dbl) (dbl) (dbl)    (dbl)     (chr)
+1 2016-02-26 97.20 98.0237 96.58 96.91 28691422     Apple
+2 2016-02-26 52.60 52.6800 51.10 51.30 35687833 Microsoft
+3 2016-02-25 96.05 96.7600 95.25 96.76 27217966     Apple
+4 2016-02-25 51.73 52.1000 50.61 52.10 26537823 Microsoft
+5 2016-02-24 93.98 96.3800 93.32 96.10 35824629     Apple
+6 2016-02-24 50.69 51.5000 50.20 51.36 31825224 Microsoft
+</code></pre></div></div>
+
+<p>To showcase data munging, I give a small example of how descriptive statistics can be computed using <a href="https://github.com/hadley/dplyr">dplyr</a>	.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">moments</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">group_by</span><span class="p">(</span><span class="n">Name</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">summarise</span><span class="p">(</span><span class="n">Mean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">StandardDeviation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sd</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">Maximum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">max</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">Minimum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">min</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">Skewness</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">skewness</span><span class="p">(</span><span class="n">Close</span><span class="p">),</span><span class="w">
+            </span><span class="n">Kurtosis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">kurtosis</span><span class="p">(</span><span class="n">Close</span><span class="p">))</span><span class="w">
+			
+</span></code></pre></div></div>
+
+<p>Yielding the output given below.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: local data frame [2 x 7]
+
+       Name     Mean StandardDeviation Maximum Minimum  Skewness kurtosis
+      (chr)    (dbl)             (dbl)   (dbl)   (dbl)     (dbl)    (dbl)
+1     Apple 99.22821         138.53090  702.10   11.00 2.4106307 8.003144
+2 Microsoft 59.35221          33.44367  179.94   15.15 0.8116662 2.829117
+</code></pre></div></div>
+
+<p>For modeling, I choose to give the simplest example possible: How to run a linear regression model in R. Here I also used <a href="http://vita.had.co.nz/papers/tidy-data.html">tidyr</a> to show how to pivot data in R.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">tidyr</span><span class="p">)</span><span class="w">
+
+</span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">spread</span><span class="p">(</span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">filter</span><span class="p">(</span><span class="n">Date</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="s2">"1990-01-01"</span><span class="p">,</span><span class="w"> </span><span class="n">Date</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="s2">"2014-01-01"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">lm</span><span class="p">(</span><span class="n">Apple</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">Microsoft</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">.</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+  </span><span class="n">summary</span><span class="p">()</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Of course this model makes little sense considering the data, but that is not the point. Here <code class="highlighter-rouge">summary()</code> exemplifies how easy it is to obtain the standard statistics, you would want from a model fit, as seen from the output below.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Call:
+lm(formula = Apple ~ Microsoft, data = .)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-170.30  -90.12  -29.63   32.98  532.78 
+
+Coefficients:
+             Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 226.43396    3.38662   66.86   &lt;2e-16 ***
+Microsoft    -1.83794    0.04811  -38.20   &lt;2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 134.6 on 6047 degrees of freedom
+Multiple R-squared:  0.1944,	Adjusted R-squared:  0.1943 
+F-statistic:  1460 on 1 and 6047 DF,  p-value: &lt; 2.2e-16
+</code></pre></div></div>
+
+<p>For visualisation of data, I choose the simplest example possible using the definite graphics library in R, <a href="http://ggplot2.org/">ggplot2</a>.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">ggplot2</span><span class="p">)</span><span class="w">
+
+</span><span class="n">qplot</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">color</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">geom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"line"</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Showing how beautiful ggplot2 graphs are even when using the standard unaltered theme.</p>
+
+<p><img src="https://dl.dropboxusercontent.com/s/wrxxef4ff7gskcd/apple-microsoft.svg" alt="Plot of Apple and Microsoft daily stock prices" /></p>
+
+<p>Finally, I turned to sharing the analysis of the data, first by dynamic reporting using <a href="http://rmarkdown.rstudio.com/">rmarkdown</a>. Here I show the R Markdown document.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">---</span><span class="w">
+</span><span class="n">title</span><span class="o">:</span><span class="w"> </span><span class="s2">"Example of Dynamic Reporting"</span><span class="w">
+</span><span class="n">output</span><span class="o">:</span><span class="w">
+  </span><span class="n">pdf_document</span><span class="w">
+</span><span class="o">---</span><span class="w">
+
+</span><span class="c1"># Plot of Apple and Microsoft</span><span class="w">
+  
+</span><span class="n">Here</span><span class="w"> </span><span class="n">we</span><span class="w"> </span><span class="n">plot</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">closing</span><span class="w"> </span><span class="n">prices</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Apple</span><span class="w"> </span><span class="n">and</span><span class="w"> </span><span class="n">Microsoft</span><span class="w"> </span><span class="k">for</span><span class="w"> 
+</span><span class="o">**</span><span class="n">`r data %&gt;% filter(Name == "Apple") %$% Date %&gt;% min()`</span><span class="o">**</span><span class="w"> </span><span class="n">to</span><span class="w"> 
+</span><span class="o">**</span><span class="n">`r data %&gt;% filter(Name == "Microsoft") %$% Date %&gt;% max()`</span><span class="o">**</span><span class="w"> </span><span class="n">and</span><span class="w"> 
+</span><span class="o">**</span><span class="n">`r data %&gt;% filter(Name == "Apple") %$% Date %&gt;% min()`</span><span class="o">**</span><span class="w"> </span><span class="n">to</span><span class="w"> 
+</span><span class="o">**</span><span class="n">`r data %&gt;% filter(Name == "Microsoft") %$% Date %&gt;% max()`</span><span class="o">**</span><span class="w"> </span><span class="n">respectively.</span><span class="w">
+
+</span><span class="err">``</span><span class="n">`{r, echo = FALSE, fig.width = 10, fig.height = 7.5}
+qplot(x = Date, y = Close, data = data,
+      color = Name, geom = "line")
+    `</span><span class="err">``</span><span class="w">
+</span></code></pre></div></div>
+
+<p>I also present the call of the rendering function.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">rmarkdown</span><span class="p">)</span><span class="w">
+
+</span><span class="n">render</span><span class="p">(</span><span class="s2">"stock-example.rmd"</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Yielding the pdf file that can be found <a href="https://www.dropbox.com/s/xed2g68myb1f532/stock-example.pdf?dl=0">here</a>, where the dynamic in-line text has been bolded.</p>
+
+<p>Finally, I present a <a href="https://www.rstudio.com/products/shiny/">Shiny</a> app, showcasing an implementation of the <a href="http://www.highcharts.com/">Highcharts</a> interavtive JavaScript charts in addition to the standard ggplot2 graph. The Highcharts implementation was just a quick hack based on my previous experience working in Highcharts, and won’t be presented here.</p>
+
+<p>Instead I present the ui.R file.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">dashboardPage</span><span class="p">(</span><span class="w">
+  </span><span class="n">dashboardHeader</span><span class="p">(</span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Aktie app"</span><span class="p">),</span><span class="w">
+  </span><span class="n">dashboardSidebar</span><span class="p">(</span><span class="w">
+    </span><span class="n">sidebarMenu</span><span class="p">(</span><span class="w">
+      
+      </span><span class="n">menuItem</span><span class="p">(</span><span class="s2">"R graphics"</span><span class="p">,</span><span class="w">
+               </span><span class="n">tabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"r-graphics"</span><span class="p">,</span><span class="w">
+               </span><span class="n">icon</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">icon</span><span class="p">(</span><span class="s2">"dashboard"</span><span class="p">)),</span><span class="w">
+      </span><span class="n">menuItem</span><span class="p">(</span><span class="s2">"Highchart Graphics"</span><span class="p">,</span><span class="w">
+               </span><span class="n">tabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"highchart-graphics"</span><span class="p">,</span><span class="w">
+               </span><span class="n">icon</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">icon</span><span class="p">(</span><span class="s2">"th"</span><span class="p">)))</span><span class="w">
+    </span><span class="p">),</span><span class="w">
+  </span><span class="n">dashboardBody</span><span class="p">(</span><span class="w">
+    
+    </span><span class="n">singleton</span><span class="p">(</span><span class="n">tags</span><span class="o">$</span><span class="n">head</span><span class="p">(</span><span class="n">tags</span><span class="o">$</span><span class="n">script</span><span class="p">(</span><span class="w">
+      </span><span class="n">src</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://code.highcharts.com/stock/highstock.js"</span><span class="p">))),</span><span class="w">
+    </span><span class="n">singleton</span><span class="p">(</span><span class="n">tags</span><span class="o">$</span><span class="n">head</span><span class="p">(</span><span class="n">tags</span><span class="o">$</span><span class="n">script</span><span class="p">(</span><span class="w">
+      </span><span class="n">src</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://code.highcharts.com/stock/1.2.5/modules/exporting.js"</span><span class="p">))),</span><span class="w">
+    
+    </span><span class="n">tabItems</span><span class="p">(</span><span class="w">
+      
+      </span><span class="n">tabItem</span><span class="p">(</span><span class="n">tabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"r-graphics"</span><span class="p">,</span><span class="w">
+              </span><span class="n">fluidRow</span><span class="p">(</span><span class="w">
+                </span><span class="n">h1</span><span class="p">(</span><span class="s2">"Stock app with ggplot2"</span><span class="p">,</span><span class="w"> </span><span class="n">align</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"center"</span><span class="p">),</span><span class="w">
+                </span><span class="n">br</span><span class="p">(),</span><span class="w">
+                </span><span class="n">column</span><span class="p">(</span><span class="m">4</span><span class="p">,</span><span class="w">
+                       </span><span class="n">textInput</span><span class="p">(</span><span class="n">inputId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"in_symbol"</span><span class="p">,</span><span class="w">
+                                 </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Symbol"</span><span class="p">,</span><span class="w">
+                                 </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"AAPL"</span><span class="p">),</span><span class="w">
+                       </span><span class="n">dateRangeInput</span><span class="p">(</span><span class="n">inputId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"in_dates"</span><span class="p">,</span><span class="w"> 
+                                      </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Date range"</span><span class="p">,</span><span class="w">
+                                      </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1997-02-01"</span><span class="p">,</span><span class="w"> 
+                                      </span><span class="n">end</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">as.character</span><span class="p">(</span><span class="n">Sys.Date</span><span class="p">())),</span><span class="w">
+                       </span><span class="n">checkboxInput</span><span class="p">(</span><span class="s2">"in_log"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Plot y axen på en log skala"</span><span class="p">,</span><span class="w"> 
+                                     </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)),</span><span class="w">
+                </span><span class="n">column</span><span class="p">(</span><span class="m">8</span><span class="p">,</span><span class="w">
+                       </span><span class="n">plotOutput</span><span class="p">(</span><span class="s2">"stock_gg"</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">250</span><span class="p">))</span><span class="w">
+                </span><span class="p">)),</span><span class="w">
+      
+      </span><span class="n">tabItem</span><span class="p">(</span><span class="n">tabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"highchart-graphics"</span><span class="p">,</span><span class="w">
+              </span><span class="n">fluidRow</span><span class="p">(</span><span class="w">
+                </span><span class="n">h1</span><span class="p">(</span><span class="s2">"Stock app with ggplot2"</span><span class="p">,</span><span class="w"> </span><span class="n">align</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"center"</span><span class="p">),</span><span class="w">
+                </span><span class="n">br</span><span class="p">(),</span><span class="w">
+                </span><span class="n">column</span><span class="p">(</span><span class="m">3</span><span class="p">,</span><span class="w">
+                       </span><span class="n">textInput</span><span class="p">(</span><span class="n">inputId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"in_symbol"</span><span class="p">,</span><span class="w">
+                                 </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Symbol"</span><span class="p">,</span><span class="w">
+                                 </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"AAPL"</span><span class="p">),</span><span class="w">
+                       </span><span class="n">dateRangeInput</span><span class="p">(</span><span class="n">inputId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"in_dates"</span><span class="p">,</span><span class="w"> 
+                                      </span><span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Date range"</span><span class="p">,</span><span class="w">
+                                      </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1997-02-01"</span><span class="p">,</span><span class="w"> 
+                                      </span><span class="n">end</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">as.character</span><span class="p">(</span><span class="n">Sys.Date</span><span class="p">()))),</span><span class="w">
+                </span><span class="n">column</span><span class="p">(</span><span class="m">9</span><span class="p">,</span><span class="w">
+                       </span><span class="n">htmlOutput</span><span class="p">(</span><span class="s2">"stock_hc"</span><span class="p">))))</span><span class="w">
+    </span><span class="p">)</span><span class="w">
+  </span><span class="p">)</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span></code></pre></div></div>
+
+<p>And the server.R file.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">shinyServer</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  
+  </span><span class="n">data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">reactive</span><span class="p">({</span><span class="w">
+    </span><span class="n">Quandl</span><span class="p">(</span><span class="n">paste0</span><span class="p">(</span><span class="s2">"WIKI/"</span><span class="p">,</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_symbol</span><span class="p">),</span><span class="w">
+           </span><span class="n">start_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_dates</span><span class="p">[</span><span class="m">1</span><span class="p">],</span><span class="w">
+           </span><span class="n">end_date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_dates</span><span class="p">[</span><span class="m">2</span><span class="p">])</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">mutate</span><span class="p">(</span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_symbol</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+      </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Open</span><span class="p">,</span><span class="w"> </span><span class="n">High</span><span class="p">,</span><span class="w"> </span><span class="n">Low</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">Volume</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">)</span><span class="w">
+    
+  </span><span class="p">})</span><span class="w">
+  
+  </span><span class="n">output</span><span class="o">$</span><span class="n">stock_gg</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderPlot</span><span class="p">({</span><span class="w">
+    </span><span class="n">qplot</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">color</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">geom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"line"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+      </span><span class="n">`+`</span><span class="p">(</span><span class="n">.</span><span class="p">,</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">input</span><span class="o">$</span><span class="n">in_log</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span><span class="w"> </span><span class="n">scale_y_log10</span><span class="p">())</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+  
+  </span><span class="n">output</span><span class="o">$</span><span class="n">stock_hc</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">renderList</span><span class="p">({</span><span class="w">
+    </span><span class="n">highchart_line_chart</span><span class="p">(</span><span class="n">data</span><span class="p">()</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                           </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
+                           </span><span class="n">mutate</span><span class="p">(</span><span class="n">Date</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">as.integer</span><span class="p">(</span><span class="n">as.POSIXct</span><span class="p">(</span><span class="n">Date</span><span class="p">))</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">1000</span><span class="p">))</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+
+</span><span class="p">})</span><span class="w">
+</span></code></pre></div></div>
+
+<p>I’ll add a link to the app running from my server at <a href="https://www.digitalocean.com/">DigitalOcean</a>, but for now, I present the app as two static images.</p>
+
+<p><img src="https://dl.dropboxusercontent.com/s/50ud6ruy8xprmzn/stock-app-gg.png" alt="Shiny app example with ggplot2" /></p>
+
+<p><img src="https://dl.dropboxusercontent.com/s/bauvxzqtbjap5a6/stock-app-hc.png" alt="Shiny app example with Highcharts" /></p>
+
+<p>Overall I am very happy with these small examples, and the fact that it only took very limited time to make.</p>
+
         </li>
     
         <li>
             <h2><a href="/2016/02/19/a-start-of-something.html">A Start Of Something</a></h2>
             <p>Greetings.</p>
+
+<p>Welcome to what is to be my online home. Having finished <a href="http://www.econ.au.dk">university</a> and started my first (post academia) full-time <a href="https://www.nationalbanken.dk/en/about_danmarks_nationalbank/organisation/Pages/Statistics.aspx">job</a>, I decided to make a place to document the projects on which I will spend some of my newly found spare time.</p>
+
+<p>This will not be a blog in the traditional sense, but simply a place for me to log what I create while working on my hobbies. These hobbies being statistical programming and financial/economic data analysis. Hence the (current) name of the website, Econ and Data. What I will be doing is logging my work on the web, i.e. writing a weblog. I love learning new things and the site is also meant to inspire myself to learn more about the things that interest me. Through writing on this site, I also hope to improve my writing skills. Though I’m fluent in English, my writing has so far been very academic, and thus I have little experience writing less formal texts.</p>
+
+<p>Having dappled with web application development in <a href="https://www.r-project.org/">R</a> through the <a href="http://shiny.rstudio.com/">Shiny</a> web application framework, I also wanted to use the creation of the site as a learning opportunity. That is to increase my knowledge about HTML, CSS, JavaScript and preferably a more general web framework.</p>
+
+<p>I started by listing how I wanted to built the site, and the features I wanted to implement. This is a summary of what I came up with:</p>
+
+<ul>
+  <li>I wanted to base the HTML and CSS on the <a href="http://getbootstrap.com/">Bootstrap</a> framework. <a href="http://shiny.rstudio.com/">Shiny</a> ui design is very much based on Bootstrap, so I was already pretty familiar with it.</li>
+  <li>The site should support the <a href="https://daringfireball.net/projects/markdown/">Markdown</a> mark-up language. I already use Markdown daily at work and when taking <a href="http://1writerapp.com/">notes</a> on my mobile devices.</li>
+  <li>The site should also support coding blocks with syntax highlighting of the languages I use the most.</li>
+  <li>I didn’t want to use a standard content management system like <a href="https://wordpress.org/">WordPress</a>, as
+    <ol>
+      <li>It would be boring.</li>
+      <li>I wouldn’t learn anything new.</li>
+      <li>I wanted to do my own customisations and certainly didn’t want to learn PHP, if I could avoid it.</li>
+    </ol>
+  </li>
+  <li>In designing my own CMS, I wanted to use a language and a framework that would be both fun to learn and useful to know professional perspective. I had already used <a href="https://www.python.org/">Python</a> a bit, and wanted to learn more as the syntax and the general aesthetics of the language pleased me quite a lot. As Python is used more and more for statistics and data analysis, It also made sense to add it to the list of languages I already knew. Finally, I knew that a very interesting web framework called <a href="https://www.djangoproject.com/">Django</a> was written in Python.</li>
+  <li>I wanted to do things <em>the right way</em>, and use best practises of web development as much as possible. I knew that Django has excellent support for testing, so I also wanted to try my hands at test driven development.</li>
+  <li>I wanted to self-host the site in order to learn a bit about server management and web-hosting in general. I also wanted to be able to integrate small separate web applications into the site.</li>
+</ul>
+
+<p>I started by catching up on the basics of the Python language. All my knowledge of programming is basically self-taught. Having studied economics, I was never able to take any formal computer science courses at university. Thus I used the fact that I was going to learn Python as an opportunity to also read up on basic computer science concepts. I read John Zelle’s introductory <a href="http://mcsp.wartburg.edu/zelle/python/">book</a> on computer science and while I didn’t really learn anything new, it was nice to have familiar concepts presented in a cohesive way for the first time.</p>
+
+<p>Next, I went through a few Django tutorials and read through the <a href="https://docs.djangoproject.com/en/1.9/">documentation</a> in order to get a general overview of the web framework. I soon discovered that with the experience I had, it would be quite a daunting task to design a web application for, what would basically be a blogging engine, from the bottom. All the web applications I had designed so far were data visualisation tools and were never as complex as a content management system. Thus I started browsing the web for tutorials specifically aimed at creating a blogging engine in Django.</p>
+
+<p>I soon discovered that a guy called Matthew Daly had written not only an excellent <a href="http://matthewdaly.co.uk/blog/2013/12/28/django-blog-tutorial-the-next-generation-part-1/">Django blog tutorial</a>, but a tutorial designing a blog engine that supported all the features I had listed. In addition, the turioal also brought a bunch of useful tools to my attention, my favourites being:</p>
+
+<ul>
+  <li>Package management for web development using <a href="http://bower.io/">Bower</a></li>
+  <li>Continuos integration using <a href="https://travis-ci.org/">Travis CI</a>.</li>
+  <li>Tracking of code coverage using <a href="https://coveralls.io/">Coveralls</a>.</li>
+  <li>Automatic deployment trough Travis CI.</li>
+  <li>Caching using <a href="http://memcached.org/">Memcached</a></li>
+  <li>Optimising and minimizing static files using <a href="http://gruntjs.com/">Grunt</a></li>
+</ul>
+
+<p>So in the end, I based the site on the code from this tutorial, though I made a few changes while going along:</p>
+
+<ul>
+  <li>I wrote the site in Python 3 instead of Python 2.</li>
+  <li>I used Django 1.9 and thus didn’t use South for migration.</li>
+  <li>Though my site is hosted on <a href="https://www.heroku.com/">Heroku</a> at this point, I will be hosting it on a visual Linux server in the cloud through <a href="https://www.digitalocean.com/">DigitalOcean</a>. Ubuntu will be the platform as Ubuntu has been the OS of my private workstation for the last couple of years.</li>
+  <li>I did not implement a comment system, as I dislike this system of communication on other sites.</li>
+  <li>I added some archive views, to get the weblog posts shown in a full archive and a monthly archive.</li>
+</ul>
+
+<p>The source code of the site is available at <a href="https://github.com/AKLLaursen/gamgee">Github</a> released under the GPL v2.0 licence. I named the project <em>gamgee</em>, because when building it, I felt like a certain naive <a href="https://en.wikipedia.org/wiki/Samwise_Gamgee">character</a> from one of my favourite novels going on an adventure. The site is still under development, and can at this point be considered an early alpha build. Hopefully, I will expand upon it in the months to come - that is unless something more interesting catches my attention.</p>
+
+<p>Being close to finishing the site, my head is already brimming over with ideas of what I want to next, and I cannot wait to get started. It is time to step into the road, let go of my feet and see where I’m swept off to.</p>
 
         </li>
     
@@ -123,90 +1446,49 @@
                         </div>
                         <div class="sidebar-module archive">
                             <h4>Archive</h4>
-	                        <ul>
-	                          
+	                        
+	                        
+                                <h5>2016</h5>
 	                            
-	                              <h5>2016</h5>
-                                
-	                          
 	                            
-                                  <li>
-	                                
-                                    
-                                </li>
-	                              
-	                                <h>May</h3>
-	                              
+                                    <h6>December</h6>
+                                    <ul>
+                                        
+                                            <li><a href="/2016/12/17/securities-database-on-ubuntu-using-postgresql-and-r.html">Securities Database On Ubuntu Using Postgresql And R</a></li>
+                                        
+                                    </ul>
 	                            
-	                          
+                                    <h6>May</h6>
+                                    <ul>
+                                        
+                                            <li><a href="/2016/05/05/a-3-d-view-of-the-us-treasury-yield-curve-in-r.html">A 3 D View Of The Us Treasury Yield Curve In R</a></li>
+                                        
+                                    </ul>
 	                            
-                                  <li>
-	                                
-                                    
-                                </li>
-	                              
-	                                <h>April</h3>
-	                              
+                                    <h6>April</h6>
+                                    <ul>
+                                        
+                                            <li><a href="/2016/04/05/my-presentation-at-copenhagenr-user-group.html">My Presentation At Copenhagenr User Group</a></li>
+                                        
+                                    </ul>
 	                            
-	                          
+                                    <h6>March</h6>
+                                    <ul>
+                                        
+                                            <li><a href="/2016/03/19/speaking-at-copenhagenr-user-group.html">Speaking At Copenhagenr User Group</a></li>
+                                        
+                                            <li><a href="/2016/03/10/presenting-r-with-5-examples.html">Presenting R With 5 Examples</a></li>
+                                        
+                                    </ul>
 	                            
-                                  <li>
-	                                
-                                    
-                                </li>
-	                              
-	                                <h>March</h3>
-	                              
+                                    <h6>February</h6>
+                                    <ul>
+                                        
+                                            <li><a href="/2016/02/19/a-start-of-something.html">A Start Of Something</a></li>
+                                        
+                                    </ul>
 	                            
-	                          
-	                            
-                                  <li>
-	                                
-                                    
-                                </li>
-	                              
-	                            
-	                          
-	                            
-                                  <li>
-	                                
-                                    
-                                </li>
-	                              
-	                                <h>February</h3>
-	                              
-	                            
-	                          
-	                        </ul>
-</div>
-                            <h5>2016</h5>
-                            <ul>
-                                <li>
-                                    <a href="/2016/02/">
-                                        February
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="/2016/03/">
-                                        Marts
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="/2016/04/">
-                                        April
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="/2016/05/">
-                                        May
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="/2016/12/">
-                                        December
-                                    </a>
-                                </li>
-                            </ul>
+	                        
                         </div>
                         <div class="sidebar-module contact">
                             <h4>Get at me</h4>
@@ -215,11 +1497,6 @@
                                     <a href="/feeds/posts/">
                                         RSS Feed
                                     </a>
-                                </li>
-                                <li>
-                                    <p>
-                                        Weblog Archives
-                                    </p>
                                 </li>
                                 <li>
                                     <a href="https://twitter.com/Andreas_Keller">

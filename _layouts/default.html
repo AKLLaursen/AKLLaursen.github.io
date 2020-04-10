@@ -59,44 +59,17 @@
                             <h4>Archive</h4>
 	                        {% assign postsByYear = site.posts | group_by_exp:"post", "post.date | date: '%Y'"  %}
 	                        {% for year in postsByYear %}
-	                            <h5>{{ year.name }}</h5>
-	                            <ul>
-	                                	{% assign postsByMonth = year.items | group_by_exp:"post", "post.date | date: '%B'"  %}
-	                                {% for month in postsByMonth.items %}
-	                                    <li>
-	                                        <p>{{month.name}}</p>
-	                                    </li>
-	                                {% endfor %}
-	                            </ul>
+                                <h5>{{ year.name }}</h5>
+	                            {% assign postsByMonth = year.items | group_by_exp:"post", "post.date | date: '%B'"  %}
+	                            {% for month in postsByMonth %}
+                                    <h6>{{ month.name }}</h6>
+                                    <ul>
+                                        {% for post in month.items %}
+                                            <li><a href="{{ post.url }}">{{ post.title }}</a></li>
+                                        {% endfor %}
+                                    </ul>
+	                            {% endfor %}
 	                        {% endfor %}
-                            <h5>2016</h5>
-                            <ul>
-                                <li>
-                                    <a href="/2016/02/">
-                                        February
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="/2016/03/">
-                                        Marts
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="/2016/04/">
-                                        April
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="/2016/05/">
-                                        May
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="/2016/12/">
-                                        December
-                                    </a>
-                                </li>
-                            </ul>
                         </div>
                         <div class="sidebar-module contact">
                             <h4>Get at me</h4>
@@ -105,11 +78,6 @@
                                     <a href="/feeds/posts/">
                                         RSS Feed
                                     </a>
-                                </li>
-                                <li>
-                                    <p>
-                                        Weblog Archives
-                                    </p>
                                 </li>
                                 <li>
                                     <a href="https://twitter.com/Andreas_Keller">
