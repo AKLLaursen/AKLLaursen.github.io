@@ -57,22 +57,18 @@
                         </div>
                         <div class="sidebar-module archive">
                             <h4>Archive</h4>
-	                        <ul>
-	                          {% for post in site.posts %}
-	                            {% unless post.next %}
-	                              <h5>{{ post.date | date: '%Y' }}</h5>
-                                {% else %}
-                                  <li>
-	                                {% capture year %}{{ post.date | date: '%B' }}{% endcapture %}
-                                    {% capture nyear %}{{ post.next.date | date: '%B' }}{% endcapture %}
-                                </li>
-	                              {% if year != nyear %}
-	                                <h>{{ post.date | date: '%B' }}</h3>
-	                              {% endif %}
-	                            {% endunless %}
-	                          {% endfor %}
-	                        </ul>
-</div>
+	                        {% assign postsByYear = site.posts | group_by_exp:"post", "post.date | date: '%Y'"  %}
+	                        {% for year in postsByYear %}
+	                            <h5>{{ year.name }}</h5>
+	                            <ul>
+	                                	{% assign postsByMonth = year.items | group_by_exp:"post", "post.date | date: '%B'"  %}
+	                                {% for month in postsByMonth.items %}
+	                                    <li>
+	                                        <p>{{month.name}}</p>
+	                                    </li>
+	                                {% endfor %}
+	                            </ul>
+	                        {% endfor %}
                             <h5>2016</h5>
                             <ul>
                                 <li>
