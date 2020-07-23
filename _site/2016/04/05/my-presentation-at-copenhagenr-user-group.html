@@ -11,6 +11,7 @@
         <link rel="apple-touch-icon" href="apple-touch-icon.png">
         <!-- Place favicon.ico in the root directory -->
         <link rel="stylesheet" href="/assets/css/styles.css">
+        <script src="https://kit.fontawesome.com/bc1abb9fe8.js" crossorigin="anonymous"></script>
     </head>
     <body>
         <!--[if lt IE 8]>
@@ -62,7 +63,7 @@
             <div class="container">
                 <div class="row">
 
-                    <div class="col-lg-8 blog-main">
+                    <div class="col-sm-8 blog-main">
                         <h1>My Presentation At Copenhagenr User Group</h1>
 
 <p>
@@ -75,13 +76,13 @@
 
 <p>Last week I had the pleasure of presenting a side project in front of a bunch of R enthusiast at the monthly <a href="http://www.meetup.com/CopenhagenR-useR-Group/">CopenhagenR useR Group meeting</a>, this time hosted at Microsoft Denmark. I gave a description of the event in a <a href="http://www.akll.io/2016/3/19/speaking-copenhagenr-user-group-revoluti/">previous post</a>. As usual, it was a cool meetup, and I really enjoyed presenting in front of such skilled people. Presenting to a group of peers really gives one the change to “nerd out”, and not dumb down on the technical stuff, which I also relished. The slides for my presentation are available for download <a href="https://dl.dropboxusercontent.com/s/4h9hv9zho9vvqo5/mycroftr.pdf">here</a> and the app I showcased is hosted <a href="http://bit.ly/1NINHEF">here</a>. Below I give a short summary of the presentation.</p>
 
-<h2 id="mycroftr"><code class="highlighter-rouge">mycroftr</code></h2>
+<h2 id="mycroftr"><code class="language-html highlighter-rouge">mycroftr</code></h2>
 
 <p>In the talk I wanted to highlight some things about R, that I find really cool, and that I thought might be unfamiliar to most people. Of course I had a time constraint, so I also had to stay within what could reasonably be presented in 30 minutes, (I might have ended up going a bit over time). I knew I wanted to talk about a Shiny app project that has been in ongoing development for quite some time, so I ended up picking the two coolest features of this app. These being</p>
 
 <ol>
-  <li>Easy implementation of the JavaScript graphing library <a href="https://www.highcharts.com/">Highcharts</a> in a Shiny app using the package <a href="http://jkunst.com/highcharter/"><code class="highlighter-rouge">highcharter</code></a> by <a href="http://jkunst.com/">Joshua Kunst</a>.</li>
-  <li>How to build a dynamic UI in a <a href="http://shiny.rstudio.com/"><code class="highlighter-rouge">Shiny</code></a> App for easy scaling of input data.</li>
+  <li>Easy implementation of the JavaScript graphing library <a href="https://www.highcharts.com/">Highcharts</a> in a Shiny app using the package <a href="http://jkunst.com/highcharter/"><code class="language-html highlighter-rouge">highcharter</code></a> by <a href="http://jkunst.com/">Joshua Kunst</a>.</li>
+  <li>How to build a dynamic UI in a <a href="http://shiny.rstudio.com/"><code class="language-html highlighter-rouge">Shiny</code></a> App for easy scaling of input data.</li>
 </ol>
 
 <p>The inspiration for the app hails from the financial industry, where the <a href="http://www.bloomberg.com/professional/products-solutions/">Bloomberg Terminal</a> is a popular tool. Using the custom desktop environment <a href="http://www.bloomberg.com/professional/custom-desktop/">Launchpad</a>, it is possible to build a dashboard with important data and select market news. However, not having $24,000 for a yearly license, I thought I would attempt to create my own using data available for free. Also, it would be nice to create something that doesn’t look like an 80s desktop application.</p>
@@ -91,8 +92,8 @@
 <p>Before I started working on the app, I made the following list of requirements. The app should be driven by free online data such as what is available from</p>
 
 <ul>
-  <li><a href="https://www.quandl.com/"><code class="highlighter-rouge">Quandl</code></a></li>
-  <li><a href="http://www.quantmod.com/"><code class="highlighter-rouge">quantmod</code></a></li>
+  <li><a href="https://www.quandl.com/"><code class="language-html highlighter-rouge">Quandl</code></a></li>
+  <li><a href="http://www.quantmod.com/"><code class="language-html highlighter-rouge">quantmod</code></a></li>
   <li>Various APIs such as the <a href="http://www.dst.dk/da/Statistik/statistikbanken/api">one offered by Statistics Denmark</a>.</li>
 </ul>
 
@@ -101,7 +102,7 @@
 <ul>
   <li><a href="https://www.highcharts.com/">Highcharts</a></li>
   <li><a href="https://d3js.org/">D3</a></li>
-  <li><a href="https://plot.ly/"><code class="highlighter-rouge">plotly</code></a></li>
+  <li><a href="https://plot.ly/"><code class="language-html highlighter-rouge">plotly</code></a></li>
 </ul>
 
 <p>I should be able to feed the app a list of data, and it should generate the graphs automatically depending on the data it has been fed. The reason for this is</p>
@@ -111,15 +112,15 @@
   <li>It should be easy to add data by just appending new data sets, such as a Quandl code, to a static file.</li>
 </ul>
 
-<p>So that is a quick overview of the project. The current status is, that the The “template” ui has been completed. Currently needing to find data and feed it (and add graph types if needed). I have decided to call the app and accompanying package <code class="highlighter-rouge">mycroftr</code>, inspired by the <a href="https://en.wikipedia.org/wiki/Mycroft_Holmes">brother</a> of <a href="https://en.wikipedia.org/wiki/Sherlock_Holmes">one of my favourite characters</a> in literature, of whom it is said in The Adventure of the Bruce-Partington Plans</p>
+<p>So that is a quick overview of the project. The current status is, that the The “template” ui has been completed. Currently needing to find data and feed it (and add graph types if needed). I have decided to call the app and accompanying package <code class="language-html highlighter-rouge">mycroftr</code>, inspired by the <a href="https://en.wikipedia.org/wiki/Mycroft_Holmes">brother</a> of <a href="https://en.wikipedia.org/wiki/Sherlock_Holmes">one of my favourite characters</a> in literature, of whom it is said in The Adventure of the Bruce-Partington Plans</p>
 
 <blockquote>
   <p>He has the tidiest and most orderly brain, with the greatest capacity for storing facts, of any man living. The same great powers which I have turned to the detection of crime he has used for this particular business. The conclusions of every department are passed to him, and he is the central exchange, the clearinghouse, which makes out the balance. All other men are specialists, but his specialism is omniscience. We will suppose that a minister needs information as to a point which involves the Navy, India, Canada and the bimetallic question; he could get his separate advices from various departments upon each, but only Mycroft can focus them all, and say offhand how each factor would affect the other. They began by using him as a short-cut, a convenience; now he has made himself an essential. In that great brain of his everything is pigeon-holed and can be handed out in an instant.</p>
 </blockquote>
 
-<h2 id="highcharter"><code class="highlighter-rouge">highcharter</code></h2>
+<h2 id="highcharter"><code class="language-html highlighter-rouge">highcharter</code></h2>
 
-<p>As mentioned above I chose to integrate the <a href="http://jkunst.com/highcharter/"><code class="highlighter-rouge">highcharter</code></a> package in my app. But why use <a href="https://www.highcharts.com/">Highcharts</a> at all? The reasons I see can be listed as</p>
+<p>As mentioned above I chose to integrate the <a href="http://jkunst.com/highcharter/"><code class="language-html highlighter-rouge">highcharter</code></a> package in my app. But why use <a href="https://www.highcharts.com/">Highcharts</a> at all? The reasons I see can be listed as</p>
 
 <ul>
   <li>The ability to easily create beautiful interactive plots.</li>
@@ -131,12 +132,12 @@
 in R</p>
 
 <ul>
-  <li>Use the package <a href="http://rcharts.io/"><code class="highlighter-rouge">rCharts</code></a>, which uses a lattice style approach.
+  <li>Use the package <a href="http://rcharts.io/"><code class="language-html highlighter-rouge">rCharts</code></a>, which uses a lattice style approach.
     <ul>
       <li>Last commit on Github was 2 years ago.</li>
     </ul>
   </li>
-  <li>Use the package <a href="https://github.com/jcizel/highchartR"><code class="highlighter-rouge">highchartR</code></a> of which I’m unfamiliar
+  <li>Use the package <a href="https://github.com/jcizel/highchartR"><code class="language-html highlighter-rouge">highchartR</code></a> of which I’m unfamiliar
     <ul>
       <li>Last commit on Github was 1 year ago.</li>
     </ul>
@@ -144,9 +145,9 @@ in R</p>
   <li>Write a JS wrapper yourself.</li>
 </ul>
 
-<p>I started on the last part, but then <code class="highlighter-rouge">highcharter</code> was <a href="http://jkunst.com/r/presenting-highcharter/">released</a> in January. <code class="highlighter-rouge">highcharter</code> is by far (in my opinion) the best Highcharts implementation so far. The package is essentially a wrapper around Highcharts. All plot types of Highcharts are available, though they might take some work to implement. And best of all it uses a familiar layering approach in building graphs. That is <code class="highlighter-rouge">highcharter</code> is a bit like <a href="http://ggplot2.org/"><code class="highlighter-rouge">ggplot2</code></a>, but without non-standard evaluation (as the author puts it himself. The layering is done using the the <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="highlighter-rouge">magrittr</code></a> pibe. Finally it is possible to build custom themes, which is also very cool. I gave some examples of plots and how to create them, which I have presented below.</p>
+<p>I started on the last part, but then <code class="language-html highlighter-rouge">highcharter</code> was <a href="http://jkunst.com/r/presenting-highcharter/">released</a> in January. <code class="language-html highlighter-rouge">highcharter</code> is by far (in my opinion) the best Highcharts implementation so far. The package is essentially a wrapper around Highcharts. All plot types of Highcharts are available, though they might take some work to implement. And best of all it uses a familiar layering approach in building graphs. That is <code class="language-html highlighter-rouge">highcharter</code> is a bit like <a href="http://ggplot2.org/"><code class="language-html highlighter-rouge">ggplot2</code></a>, but without non-standard evaluation (as the author puts it himself. The layering is done using the the <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="language-html highlighter-rouge">magrittr</code></a> pibe. Finally it is possible to build custom themes, which is also very cool. I gave some examples of plots and how to create them, which I have presented below.</p>
 
-<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Get data</span><span class="w">
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="c1"># Get data</span><span class="w">
 
 </span><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
 </span><span class="n">library</span><span class="p">(</span><span class="n">Quandl</span><span class="p">)</span><span class="w">
@@ -237,19 +238,19 @@ in R</p>
 </span><span class="n">hc_tm</span><span class="w">
 </span></code></pre></div></div>
 
-<p>Every container in the Highcharts API has its own separate <code class="highlighter-rouge">highcharter</code> function. As such, every graph imaginable from the Highcharts website can be recreated in R. Thus it is easy to leverage the extremely powerful chart library that is Highcharts. The charts are easy to implement in a Shiny app through the <code class="highlighter-rouge">renderHighchart()</code> and <code class="highlighter-rouge">highchartOutput()</code> functions.</p>
+<p>Every container in the Highcharts API has its own separate <code class="language-html highlighter-rouge">highcharter</code> function. As such, every graph imaginable from the Highcharts website can be recreated in R. Thus it is easy to leverage the extremely powerful chart library that is Highcharts. The charts are easy to implement in a Shiny app through the <code class="language-html highlighter-rouge">renderHighchart()</code> and <code class="language-html highlighter-rouge">highchartOutput()</code> functions.</p>
 
 <h2 id="dynamic-ui-in-shiny">Dynamic UI in Shiny</h2>
-<p>If you are familiar with writing applications in Shiny, you are familiar with the <code class="highlighter-rouge">ui.R</code> and <code class="highlighter-rouge">server.R</code> approach to building apps.</p>
+<p>If you are familiar with writing applications in Shiny, you are familiar with the <code class="language-html highlighter-rouge">ui.R</code> and <code class="language-html highlighter-rouge">server.R</code> approach to building apps.</p>
 
 <ul>
-  <li><code class="highlighter-rouge">ui.R</code> is where the interface is defined.</li>
-  <li><code class="highlighter-rouge">server.R</code> handles the server side of the app. Usually data gathering, data manipulation, data modeling and data visualisation.</li>
+  <li><code class="language-html highlighter-rouge">ui.R</code> is where the interface is defined.</li>
+  <li><code class="language-html highlighter-rouge">server.R</code> handles the server side of the app. Usually data gathering, data manipulation, data modeling and data visualisation.</li>
 </ul>
 
 <p>This approach is however very static, that is for each plot you write a server side component and a UI component. This makes it difficult to scale when you increase the amount of input data. Below is an example of how you would build an app traditionally using this approach. The example is taken from the <a href="http://shiny.rstudio.com/tutorial/lesson1/">RStudio Shiny tutoriual</a>.</p>
 
-<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
 
 </span><span class="c1"># ui.R</span><span class="w">
 </span><span class="n">shinyUI</span><span class="p">(</span><span class="n">fluidPage</span><span class="p">(</span><span class="w">
@@ -282,17 +283,17 @@ in R</p>
 </span><span class="p">})</span><span class="w">
 </span></code></pre></div></div>
 
-<p>I however want to be able to serve the app a list of data, and have the interface (the plots) adjust accordingly. This is in part inspired by <a href="http://please.hackmyresume.com/">HackMyResume</a>, a project making you able to generate CV from information in a JSON file. So in <code class="highlighter-rouge">Shiny</code> I want to serve the server a list of data, that can be subset through the inputs from the UI, making me able to</p>
+<p>I however want to be able to serve the app a list of data, and have the interface (the plots) adjust accordingly. This is in part inspired by <a href="http://please.hackmyresume.com/">HackMyResume</a>, a project making you able to generate CV from information in a JSON file. So in <code class="language-html highlighter-rouge">Shiny</code> I want to serve the server a list of data, that can be subset through the inputs from the UI, making me able to</p>
 
 <ul>
-  <li>Generate the UI on the server side though the <code class="highlighter-rouge">renderUI()</code> function.</li>
-  <li>Display the UI through the <code class="highlighter-rouge">uiOutput()</code> and leave the rest of the <code class="highlighter-rouge">ui.R</code>
+  <li>Generate the UI on the server side though the <code class="language-html highlighter-rouge">renderUI()</code> function.</li>
+  <li>Display the UI through the <code class="language-html highlighter-rouge">uiOutput()</code> and leave the rest of the <code class="language-html highlighter-rouge">ui.R</code>
 file as a template.</li>
 </ul>
 
 <p>An example of how to implement this is given below. This code is inspired by <a href="https://gist.github.com/wch/5436415/">this gist</a>.</p>
 
-<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
 
 </span><span class="c1"># ui.R</span><span class="w">
 </span><span class="n">shinyUI</span><span class="p">(</span><span class="n">fluidPage</span><span class="p">(</span><span class="w">
@@ -366,7 +367,7 @@ file as a template.</li>
 
                     </div>
 
-                    <div class="col-lg-3 col-md-offset-1 blog-sidebar">
+                    <div class="offset-sm-1 col-sm-3 blog-sidebar">
                         <div class="sidebar-module sidebar-module-inset about">
                             <h4>Introduction</h4>
                             <p>I am <a href="/about/">Andreas</a>: Machine learning enthusiast, MLOps devotee, tech addict and all-round geek.</p>

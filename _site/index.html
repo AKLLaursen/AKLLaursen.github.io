@@ -11,6 +11,7 @@
         <link rel="apple-touch-icon" href="apple-touch-icon.png">
         <!-- Place favicon.ico in the root directory -->
         <link rel="stylesheet" href="/assets/css/styles.css">
+        <script src="https://kit.fontawesome.com/bc1abb9fe8.js" crossorigin="anonymous"></script>
     </head>
     <body>
         <!--[if lt IE 8]>
@@ -62,12 +63,11 @@
             <div class="container">
                 <div class="row">
 
-                    <div class="col-lg-8 blog-main">
-                        <ul>
-    
-        <li>
-            <h2><a href="/2016/12/17/securities-database-on-ubuntu-using-postgresql-and-r.html">Securities Database On Ubuntu Using Postgresql And R</a></h2>
-            <p>For various purposes, I have been wanting to set up a database with the aim of hosting securities data on my <a href="https://www.digitalocean.com/">server</a> for some time now. I thought that I would document the process as I went along, such that it would be easy to do again, should I ever need to. Further, it might be both interesting and useful for other people.</p>
+                    <div class="col-sm-8 blog-main">
+                        
+        
+    <h2><a href="/2016/12/17/securities-database-on-ubuntu-using-postgresql-and-r.html">Securities Database On Ubuntu Using Postgresql And R</a></h2>
+    <p>For various purposes, I have been wanting to set up a database with the aim of hosting securities data on my <a href="https://www.digitalocean.com/">server</a> for some time now. I thought that I would document the process as I went along, such that it would be easy to do again, should I ever need to. Further, it might be both interesting and useful for other people.</p>
 
 <p>An easy accessible database is very useful if you want to check the odd model, theory or just want to do a quick visualisation. Accessing services such as <a href="https://www.quandl.com/">Quandl</a> can quickly get very time consuming, once you need a large number of time series.</p>
 
@@ -77,40 +77,40 @@
 
 <p>The database will be hosted on a <a href="http://www.ubuntu.com/server">Ubuntu Server 14.04</a> platform. I have still to migrate the server to 16.04, even though Digital Ocean has made it available. Postgresql is ridiculously easy to set up. To install SSH into the server and run.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get update
-sudo apt-get install postgresql postgresql-contrib
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="nb">sudo </span>apt-get update
+<span class="nb">sudo </span>apt-get <span class="nb">install </span>postgresql postgresql-contrib
 </code></pre></div></div>
 
-<p>The <a href="http://www.postgresql.org/docs/9.1/static/contrib.html">contrib package</a> provides porting tools, analysis utilities, and plug-in features that are not part of the core PostgreSQL system. As part of the installation, a user account called <code class="highlighter-rouge">postgres</code> is created. This user can be used to check that Postgres is installed and working as intended.</p>
+<p>The <a href="http://www.postgresql.org/docs/9.1/static/contrib.html">contrib package</a> provides porting tools, analysis utilities, and plug-in features that are not part of the core PostgreSQL system. As part of the installation, a user account called <code class="language-html highlighter-rouge">postgres</code> is created. This user can be used to check that Postgres is installed and working as intended.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo -i -u postgres
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="nb">sudo</span> <span class="nt">-i</span> <span class="nt">-u</span> postgres
 psql
 
-psql (9.4.5)
-Type "help" for help.
+psql <span class="o">(</span>9.4.5<span class="o">)</span>
+Type <span class="s2">"help"</span> <span class="k">for </span>help.
 
-\q
+<span class="se">\q</span>
 </code></pre></div></div>
 
-<p>Next up is creating a new role. One might want to associate an existing account with the given role, or one might want to create a new account. At any rate the role is assigned by entering the following using the <code class="highlighter-rouge">postgres</code> account.</p>
+<p>Next up is creating a new role. One might want to associate an existing account with the given role, or one might want to create a new account. At any rate the role is assigned by entering the following using the <code class="language-html highlighter-rouge">postgres</code> account.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createuser --interactive
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code>createuser <span class="nt">--interactive</span>
 Enter name of role to add: andreas   
-Shall the new role be a superuser? (y/n) y
+Shall the new role be a superuser? <span class="o">(</span>y/n<span class="o">)</span> y
 </code></pre></div></div>
 
 <p>Here I choose to be a superuser in order to have all privileges. Each user must also be associated with a database of the same name. It can be created by entering.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createdb andreas
-</code></pre></div></div>
+<pre><code class="language-postgres">createdb andreas
+</code></pre>
 
-<p>Thus the <code class="highlighter-rouge">psql</code> command can be invoked as the given user (in my case andreas). That’s it for setting up the server. Of course there’s a lot more to relational database administration, but as this is a small server only accessed by one person, there is no reason to get fancy with user rights and restrictions.</p>
+<p>Thus the <code class="language-html highlighter-rouge">psql</code> command can be invoked as the given user (in my case andreas). That’s it for setting up the server. Of course there’s a lot more to relational database administration, but as this is a small server only accessed by one person, there is no reason to get fancy with user rights and restrictions.</p>
 
 <p>We can then create and access the actual securities database by running the following commands in the terminal. The standard in postgreql is to use all lower-case names, however due to problems with RODBC, I had to have the database name be capitalized. I have no idea as to why.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>createdb Securities
+<pre><code class="language-postgres">createdb Securities
 psql Securities
-</code></pre></div></div>
+</code></pre>
 
 <p>Next, it is time to set up the database. In this post I will cover how to set up equities in the <a href="https://www.quantstart.com/articles/Securities-Master-Database-with-MySQL-and-Python">style</a> of Michael Halls-Moore of <a href="https://www.quantstart.com/">QuantStart</a>. I will however append a bit as I go along. Thus, we will be creating 4 simple tables:</p>
 
@@ -123,60 +123,60 @@ psql Securities
 
 <p>First I create an equity schema.</p>
 
-<pre><code class="language-SQL">create schema equities;
-</code></pre>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="k">create</span> <span class="k">schema</span> <span class="n">equities</span><span class="p">;</span>
+</code></pre></div></div>
 
 <p>And then I build the tables, starting with the exchange table and then building the data_provider, symbol and daily_price tables.</p>
 
-<pre><code class="language-SQL">create table equities.exchange (
-  id_exchange serial not null primary key,
-  abbreviation varchar(32) not null,
-  name varchar(255) not null,
-  city varchar(255) null,
-  country varchar(255) null,
-  currency varchar(64) null,
-  timezone_offset varchar(6) null,
-  created_datetime timestamp not null,
-  last_updated_datetime timestamp not null
-);
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="k">create</span> <span class="k">table</span> <span class="n">equities</span><span class="p">.</span><span class="n">exchange</span> <span class="p">(</span>
+  <span class="n">id_exchange</span> <span class="nb">serial</span> <span class="k">not</span> <span class="k">null</span> <span class="k">primary</span> <span class="k">key</span><span class="p">,</span>
+  <span class="n">abbreviation</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">name</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">city</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">country</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">currency</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">timezone_offset</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">created_datetime</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">last_updated_datetime</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span>
+<span class="p">);</span>
 
-create table equities.data_vendor (
-  id_data_vendor serial not null primary key,
-  name varchar(64) not null,
-  website_url varchar(255) null,
-  support_email varchar(255) null,
-  created_datetime timestamp not null,
-  last_updated_datetime timestamp not null
-);
+<span class="k">create</span> <span class="k">table</span> <span class="n">equities</span><span class="p">.</span><span class="n">data_vendor</span> <span class="p">(</span>
+  <span class="n">id_data_vendor</span> <span class="nb">serial</span> <span class="k">not</span> <span class="k">null</span> <span class="k">primary</span> <span class="k">key</span><span class="p">,</span>
+  <span class="n">name</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">website_url</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">support_email</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">created_datetime</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">last_updated_datetime</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span>
+<span class="p">);</span>
 
-create table equities.symbol (
-  id_symbol serial not null primary key,
-  id_exchange serial not null references equities.exchange(id_exchange),
-  ticker varchar(32) not null,
-  instrument varchar(64) not null,
-  name varchar(255) null,
-  sector varchar(255) null,
-  currency varchar(32) null,
-  created_datetime timestamp not null,
-  last_updated_datetime timestamp not null
-);
+<span class="k">create</span> <span class="k">table</span> <span class="n">equities</span><span class="p">.</span><span class="n">symbol</span> <span class="p">(</span>
+  <span class="n">id_symbol</span> <span class="nb">serial</span> <span class="k">not</span> <span class="k">null</span> <span class="k">primary</span> <span class="k">key</span><span class="p">,</span>
+  <span class="n">id_exchange</span> <span class="nb">serial</span> <span class="k">not</span> <span class="k">null</span> <span class="k">references</span> <span class="n">equities</span><span class="p">.</span><span class="n">exchange</span><span class="p">(</span><span class="n">id_exchange</span><span class="p">),</span>
+  <span class="n">ticker</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">instrument</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">name</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">sector</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">currency</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">created_datetime</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">last_updated_datetime</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span>
+<span class="p">);</span>
 
-create table equities.daily_price (
-  id_daily_price serial not null primary key,
-  id_data_vendor serial not null references equities.data_vendor(id_data_vendor),
-  id_symbol serial not null references equities.symbol(id_symbol),
-  date timestamp not null,
-  created_datetime timestamp not null,
-  last_updated_datetime timestamp not null,
-  open decimal(19, 4) null,
-  high decimal(19, 4) null,
-  low decimal(19, 4) null,
-  close decimal(19, 4) null,
-  adj_close decimal(19, 4) null,
-  volume bigint null
-);
+<span class="k">create</span> <span class="k">table</span> <span class="n">equities</span><span class="p">.</span><span class="n">daily_price</span> <span class="p">(</span>
+  <span class="n">id_daily_price</span> <span class="nb">serial</span> <span class="k">not</span> <span class="k">null</span> <span class="k">primary</span> <span class="k">key</span><span class="p">,</span>
+  <span class="n">id_data_vendor</span> <span class="nb">serial</span> <span class="k">not</span> <span class="k">null</span> <span class="k">references</span> <span class="n">equities</span><span class="p">.</span><span class="n">data_vendor</span><span class="p">(</span><span class="n">id_data_vendor</span><span class="p">),</span>
+  <span class="n">id_symbol</span> <span class="nb">serial</span> <span class="k">not</span> <span class="k">null</span> <span class="k">references</span> <span class="n">equities</span><span class="p">.</span><span class="n">symbol</span><span class="p">(</span><span class="n">id_symbol</span><span class="p">),</span>
+  <span class="nb">date</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">created_datetime</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">last_updated_datetime</span> <span class="nb">timestamp</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
+  <span class="k">open</span> <span class="nb">decimal</span><span class="p">(</span><span class="mi">19</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">high</span> <span class="nb">decimal</span><span class="p">(</span><span class="mi">19</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">low</span> <span class="nb">decimal</span><span class="p">(</span><span class="mi">19</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="k">close</span> <span class="nb">decimal</span><span class="p">(</span><span class="mi">19</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">adj_close</span> <span class="nb">decimal</span><span class="p">(</span><span class="mi">19</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="k">null</span><span class="p">,</span>
+  <span class="n">volume</span> <span class="nb">bigint</span> <span class="k">null</span>
+<span class="p">);</span>
 
-</code></pre>
+</code></pre></div></div>
 
 <p>Note the use of foreign keys employed to connect dimensions to the fact table through their respective primary keys.</p>
 
@@ -184,66 +184,66 @@ create table equities.daily_price (
 
 <p>In R it is easy to connect to a variety of relational databases using the <a href="https://en.wikipedia.org/wiki/Open_Database_Connectivity">ODBC</a> database interface <a href="https://cran.r-project.org/web/packages/RODBC/index.html">RODBC</a>. However, setting up ODBC on a Ubuntu server is unfortunately quite a hassle. First we need to install the unixodbc and odbc-postgresql packages, which installs an open source implementation of the ODBC API and the official PostgreSQL ODBC driver. As the versions of these packages hosted in Ubuntu’s package manager were either outdated or bugged, I found that I had to build both packages from source in order to make it work. A quick overview of how to do that is given below, starting with unixodbc.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget ftp://ftp.unixodbc.org/pub/unixODBC/unixODBC-2.3.4.tar.gz
-tar xf unixODBC-2.3.4.tar.gz
-cd unixODBC-2.3.4
-./configure --disable-gui --disable-drivers --enable-stats=no --enable-iconv --with-iconv-char-enc=UTF8 --with-iconv-ucode-enc=UTF16LE
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code>wget ftp://ftp.unixodbc.org/pub/unixODBC/unixODBC-2.3.4.tar.gz
+<span class="nb">tar </span>xf unixODBC-2.3.4.tar.gz
+<span class="nb">cd </span>unixODBC-2.3.4
+./configure <span class="nt">--disable-gui</span> <span class="nt">--disable-drivers</span> <span class="nt">--enable-stats</span><span class="o">=</span>no <span class="nt">--enable-iconv</span> <span class="nt">--with-iconv-char-enc</span><span class="o">=</span>UTF8 <span class="nt">--with-iconv-ucode-enc</span><span class="o">=</span>UTF16LE
 make
-sudo make install
+<span class="nb">sudo </span>make <span class="nb">install</span>
 </code></pre></div></div>
-<p>Now the files have been installed in a local library to we need to add <code class="highlighter-rouge">/usr/local/lib</code> to the end of the <code class="highlighter-rouge">/etc/ld.so.conf</code> file and run:</p>
+<p>Now the files have been installed in a local library to we need to add <code class="language-html highlighter-rouge">/usr/local/lib</code> to the end of the <code class="language-html highlighter-rouge">/etc/ld.so.conf</code> file and run:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo ldconfig
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="nb">sudo </span>ldconfig
 </code></pre></div></div>
 
 <p>Next we build the odbc-postgresql package in the same way.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz
-tar xf postgresql-9.6.1.tar.gz
-cd postgresql-9.6.1
-./configure --with-unixodbc=/usr/local/bin/odbc_config 
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code>wget https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz
+<span class="nb">tar </span>xf postgresql-9.6.1.tar.gz
+<span class="nb">cd </span>postgresql-9.6.1
+./configure <span class="nt">--with-unixodbc</span><span class="o">=</span>/usr/local/bin/odbc_config 
 make
-sudo make install
+<span class="nb">sudo </span>make <span class="nb">install</span>
 </code></pre></div></div>
 
-<p>We can then setup the connection by editing a few files. Set up the driver in <code class="highlighter-rouge">/usr/local/etc/odbcinst.ini</code>.</p>
+<p>We can then setup the connection by editing a few files. Set up the driver in <code class="language-html highlighter-rouge">/usr/local/etc/odbcinst.ini</code>.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[PostgreSQL]
-Description     = PostgreSQL ODBC driver (Unicode 9.5)
-Driver          = /usr/local/lib/psqlodbcw.so
-Debug           = 0
-CommLog         = 1
-UsageCount      = 1
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="o">[</span>PostgreSQL]
+Description     <span class="o">=</span> PostgreSQL ODBC driver <span class="o">(</span>Unicode 9.5<span class="o">)</span>
+Driver          <span class="o">=</span> /usr/local/lib/psqlodbcw.so
+Debug           <span class="o">=</span> 0
+CommLog         <span class="o">=</span> 1
+UsageCount      <span class="o">=</span> 1
 </code></pre></div></div>
 
-<p>Next set up the database connections. In our case, we add the following to the <code class="highlighter-rouge">/usr/local/etc/odbc.ini</code> file.</p>
+<p>Next set up the database connections. In our case, we add the following to the <code class="language-html highlighter-rouge">/usr/local/etc/odbc.ini</code> file.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[ODBC Data Sources]
-securities = The securities database
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="o">[</span>ODBC Data Sources]
+securities <span class="o">=</span> The securities database
 
-[securities]
-Driver      = PostgreSQL
-ServerName  = localhost
-Port        = 5432
-Database    = Securities
-Username    = user
-Password    = password
-Protocol    = 9.6.1
-Debug       = 1
+<span class="o">[</span>securities]
+Driver      <span class="o">=</span> PostgreSQL
+ServerName  <span class="o">=</span> localhost
+Port        <span class="o">=</span> 5432
+Database    <span class="o">=</span> Securities
+Username    <span class="o">=</span> user
+Password    <span class="o">=</span> password
+Protocol    <span class="o">=</span> 9.6.1
+Debug       <span class="o">=</span> 1
 </code></pre></div></div>
 
 <p>Here the username and password should of course reflect the database user and password. We can then test the connection by running.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>isql -v securities
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code>isql <span class="nt">-v</span> securities
 </code></pre></div></div>
 
 <p>Which if everything is set up correct returns the following output.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+---------------------------------------+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code>+---------------------------------------+
 | Connected!                            |
 |                                       |
 | sql-statement                         |
-| help [tablename]                      |
+| <span class="nb">help</span> <span class="o">[</span>tablename]                      |
 | quit                                  |
 |                                       |
 +---------------------------------------+
@@ -256,21 +256,21 @@ SQL&gt;
 
 <p>First we download the source package and set a path such that the compiler uses the unixODBC library instead of the iODBC library. Next we install the package.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget cran.r-project.org/src/contrib/RODBC_1.3-14.tar.gz
-DYLD_LIBRARY_PATH=/usr/local/lib
-sudo R CMD INSTALL RODBC_1.3-13.tar.gz
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code>wget cran.r-project.org/src/contrib/RODBC_1.3-14.tar.gz
+<span class="nv">DYLD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/lib
+<span class="nb">sudo </span>R CMD INSTALL RODBC_1.3-13.tar.gz
 </code></pre></div></div>
 
 <p>We can now test the connection in R.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="s2">"RODBC"</span><span class="p">)</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="s2">"RODBC"</span><span class="p">)</span><span class="w">
 </span><span class="n">odbcDataSources</span><span class="p">()</span><span class="w">
 </span></code></pre></div></div>
 
 <p>Which returns the output:</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  securities
-"PostgreSQL"
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="syntax"><code>  securities
+<span class="s2">"PostgreSQL"</span>
 </code></pre></div></div>
 
 <p>So we have a working connection.</p>
@@ -281,7 +281,7 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 
 <p>The script for obtaining the symbols and the exchanges and populating the tables is given below. To run all the following scripts, you should import these functions.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">magrittr</span><span class="p">,</span><span class="w"> </span><span class="n">`%&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%&lt;&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%$%`</span><span class="p">)</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">magrittr</span><span class="p">,</span><span class="w"> </span><span class="n">`%&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%&lt;&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%$%`</span><span class="p">)</span><span class="w">
 </span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">xml2</span><span class="p">,</span><span class="w"> </span><span class="n">read_html</span><span class="p">)</span><span class="w">
 </span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">rvest</span><span class="p">,</span><span class="w"> </span><span class="n">html_node</span><span class="p">,</span><span class="w"> </span><span class="n">html_nodes</span><span class="p">,</span><span class="w"> </span><span class="n">html_table</span><span class="p">,</span><span class="w"> </span><span class="n">html_text</span><span class="p">,</span><span class="w"> </span><span class="n">html_attr</span><span class="p">)</span><span class="w">
 </span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">dplyr</span><span class="p">,</span><span class="w"> </span><span class="n">transmute</span><span class="p">,</span><span class="w"> </span><span class="n">bind_rows</span><span class="p">,</span><span class="w"> </span><span class="n">left_join</span><span class="p">,</span><span class="w"> </span><span class="n">select</span><span class="p">,</span><span class="w"> </span><span class="n">inner_join</span><span class="p">,</span><span class="w"> </span><span class="n">mutate</span><span class="p">)</span><span class="w">
@@ -293,7 +293,7 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 
 <p>Two functions get the symbols and the exchanges and two functions inserts these into the postgresql database</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Function obtaining symbols</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="c1"># Function obtaining symbols</span><span class="w">
 </span><span class="n">get_symbols</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
   
   </span><span class="c1"># Set current time</span><span class="w">
@@ -481,7 +481,7 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 
 <p>Finally, we turn towards obtaining the actual stock quotes. I do this using the <a href="http://finance.yahoo.com/">Yahoo Finance</a> API. It is by far the easiest way to obtain the quotes, as the individual series are easy to identify using the ticker symbols and the data returned in a nice <a href="http://www.json.org/">JSON</a> format. First however, I populate the data vendor table using the function given below.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Insert a data vendor to the database</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="c1"># Insert a data vendor to the database</span><span class="w">
 </span><span class="n">insert_data_vendor</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">data_vendor</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
   
   </span><span class="c1"># Get current time</span><span class="w">
@@ -514,7 +514,7 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 
 <p>Next we obtain the prices. The function and function call is given below. Note that the function checks against the database in order to remove doublets. This functionality could also be implemented in the other functions, should the need arise, (it probably will).</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Insert stock quotes function</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="c1"># Insert stock quotes function</span><span class="w">
 </span><span class="n">insert_stock_quotes</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">date_from</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"2016-08-01"</span><span class="p">,</span><span class="w"> </span><span class="n">date_to</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Sys.Date</span><span class="p">(),</span><span class="w"> </span><span class="n">user</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
   
   </span><span class="c1"># Set current time</span><span class="w">
@@ -615,15 +615,15 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 
 <p>And that’s all. Of course, if one wanted to keep the data updated, the insert_stock_quotes function could be set to run each day via a <a href="https://en.wikipedia.org/wiki/Cron">Cron</a> job.</p>
 
-        </li>
-    
-        <li>
-            <h2><a href="/2016/05/05/a-3-d-view-of-the-us-treasury-yield-curve-in-r.html">A 3 D View Of The Us Treasury Yield Curve In R</a></h2>
-            <p>Some time ago, I was made aware of the brilliant <a href="http://www.nytimes.com/interactive/2015/03/19/upshot/3d-yield-curve-economic-growth.html">3-D view of the US treasury yield curve</a> that <a href="http://driven-by-data.net/">Gregor Aisch</a> had made for <a href="http://www.nytimes.com">New York Times</a>. In my opinion this is a brilliant example of how 3-D graphs in rare cases can be a viable way to visualize data.</p>
+        
 
-<p>For some time, I have been wanting to see how such a 3-D plot of the US treasury yield curve could be constructed in R. Finally, the other day, I had the time to sit down and consider it. First I needed to get hands on the actual data. A number of sources are available, but actually the <a href="https://www.treasury.gov/Pages/default.aspx">Treasury Department</a> itself provides a daily XML feed with the data available <a href="https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yield">here</a>. Thus it was easy to write a script to get the data using <a href="https://github.com/hadley/xml2"><code class="highlighter-rouge">xml2</code></a>, <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="highlighter-rouge">magrittr</code></a> and <a href="https://github.com/hadley/dplyr"><code class="highlighter-rouge">dplyr</code></a>.</p>
+        
+    <h2><a href="/2016/05/05/a-3-d-view-of-the-us-treasury-yield-curve-in-r.html">A 3 D View Of The Us Treasury Yield Curve In R</a></h2>
+    <p>Some time ago, I was made aware of the brilliant <a href="http://www.nytimes.com/interactive/2015/03/19/upshot/3d-yield-curve-economic-growth.html">3-D view of the US treasury yield curve</a> that <a href="http://driven-by-data.net/">Gregor Aisch</a> had made for <a href="http://www.nytimes.com">New York Times</a>. In my opinion this is a brilliant example of how 3-D graphs in rare cases can be a viable way to visualize data.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">magrittr</span><span class="p">,</span><span class="w"> </span><span class="n">`%&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%$%`</span><span class="p">,</span><span class="w"> </span><span class="n">set_names</span><span class="p">)</span><span class="w">
+<p>For some time, I have been wanting to see how such a 3-D plot of the US treasury yield curve could be constructed in R. Finally, the other day, I had the time to sit down and consider it. First I needed to get hands on the actual data. A number of sources are available, but actually the <a href="https://www.treasury.gov/Pages/default.aspx">Treasury Department</a> itself provides a daily XML feed with the data available <a href="https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yield">here</a>. Thus it was easy to write a script to get the data using <a href="https://github.com/hadley/xml2"><code class="language-html highlighter-rouge">xml2</code></a>, <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="language-html highlighter-rouge">magrittr</code></a> and <a href="https://github.com/hadley/dplyr"><code class="language-html highlighter-rouge">dplyr</code></a>.</p>
+
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">magrittr</span><span class="p">,</span><span class="w"> </span><span class="n">`%&gt;%`</span><span class="p">,</span><span class="w"> </span><span class="n">`%$%`</span><span class="p">,</span><span class="w"> </span><span class="n">set_names</span><span class="p">)</span><span class="w">
 </span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">xml2</span><span class="p">,</span><span class="w"> </span><span class="n">read_xml</span><span class="p">,</span><span class="w"> </span><span class="n">xml_find_all</span><span class="p">,</span><span class="w"> </span><span class="n">xml_children</span><span class="p">,</span><span class="w"> </span><span class="n">xml_text</span><span class="p">,</span><span class="w"> </span><span class="n">xml_name</span><span class="p">)</span><span class="w">
 </span><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">dplyr</span><span class="p">,</span><span class="w"> </span><span class="n">bind_rows</span><span class="p">,</span><span class="w"> </span><span class="n">select</span><span class="p">,</span><span class="w"> </span><span class="n">arrange</span><span class="p">)</span><span class="w">
 
@@ -654,7 +654,7 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
   </span><span class="n">arrange</span><span class="p">(</span><span class="n">NEW_DATE</span><span class="p">)</span><span class="w">
 </span></code></pre></div></div>
 
-<p>Here I also used the package <a href="https://cran.r-project.org/web/packages/import/vignettes/import.html"><code class="highlighter-rouge">import</code></a>, which makes it possible to import objects into a given R session in a very Python like way. I like this a lot as</p>
+<p>Here I also used the package <a href="https://cran.r-project.org/web/packages/import/vignettes/import.html"><code class="language-html highlighter-rouge">import</code></a>, which makes it possible to import objects into a given R session in a very Python like way. I like this a lot as</p>
 
 <ol>
   <li>Often you only need to utilize a limited number of functions from a given package. As such, there is really no reason to import the entire library.</li>
@@ -664,17 +664,17 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 <p>Next, how to create the actual plot? There exists a number of R packages for plotting 3-D visualizations. I have given a number of them below.</p>
 
 <ul>
-  <li>The <a href="https://stat.ethz.ch/R-manual/R-devel/library/graphics/html/persp.html"><code class="highlighter-rouge">persp()</code></a> function in the base R package.</li>
-  <li>The <a href="https://cran.r-project.org/web/packages/plot3D/index.html"><code class="highlighter-rouge">plot3D</code></a> package.</li>
-  <li>The <a href="https://cran.r-project.org/web/packages/scatterplot3d/index.html"><code class="highlighter-rouge">scatterplot3d</code></a> package.</li>
-  <li>The <a href="https://cran.r-project.org/web/packages/rgl/index.html"><code class="highlighter-rouge">rgl</code></a> package.</li>
+  <li>The <a href="https://stat.ethz.ch/R-manual/R-devel/library/graphics/html/persp.html"><code class="language-html highlighter-rouge">persp()</code></a> function in the base R package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/plot3D/index.html"><code class="language-html highlighter-rouge">plot3D</code></a> package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/scatterplot3d/index.html"><code class="language-html highlighter-rouge">scatterplot3d</code></a> package.</li>
+  <li>The <a href="https://cran.r-project.org/web/packages/rgl/index.html"><code class="language-html highlighter-rouge">rgl</code></a> package.</li>
 </ul>
 
-<p>Especially <code class="highlighter-rouge">plot3D</code> has traditionally been used to create static 3-D visualizations. However, in order to make the 3-D graphic as comprehensible as possible, it needs to be dynamic. That is the reader/user has to be able to turn and zoom in the graphic and have labels appearing when hovering over a given point. This means utilizing some sort of JavaScript graphic library. Here <a href="https://d3js.org/">D3</a> is the obvious choice. Luckily in R, we can use the awesome integration of <a href="https://plot.ly/">Plotly</a> in R, to ultimately create a vizualisation that is very close to the one given in the New York Times article. (Digging in the source code of the page seems to reveal that that the original visualization was made using <a href="https://www.adobe.com/products/illustrator.html">Adobe Illustrator</a>).</p>
+<p>Especially <code class="language-html highlighter-rouge">plot3D</code> has traditionally been used to create static 3-D visualizations. However, in order to make the 3-D graphic as comprehensible as possible, it needs to be dynamic. That is the reader/user has to be able to turn and zoom in the graphic and have labels appearing when hovering over a given point. This means utilizing some sort of JavaScript graphic library. Here <a href="https://d3js.org/">D3</a> is the obvious choice. Luckily in R, we can use the awesome integration of <a href="https://plot.ly/">Plotly</a> in R, to ultimately create a vizualisation that is very close to the one given in the New York Times article. (Digging in the source code of the page seems to reveal that that the original visualization was made using <a href="https://www.adobe.com/products/illustrator.html">Adobe Illustrator</a>).</p>
 
-<p>Making the 3-D view of the yield curve in R turned out to be a simple exercise using the <a href="https://plot.ly/r/"><code class="highlighter-rouge">plotly</code></a> package. Actually one of the <a href="https://plot.ly/~chris/folder/home">founders</a> of Plotly had already made an example, and I basically took his JavaScript code and implemented a very similar solution using the Plotly R API. The code is given below.</p>
+<p>Making the 3-D view of the yield curve in R turned out to be a simple exercise using the <a href="https://plot.ly/r/"><code class="language-html highlighter-rouge">plotly</code></a> package. Actually one of the <a href="https://plot.ly/~chris/folder/home">founders</a> of Plotly had already made an example, and I basically took his JavaScript code and implemented a very similar solution using the Plotly R API. The code is given below.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">plotly</span><span class="p">,</span><span class="w"> </span><span class="n">plot_ly</span><span class="p">,</span><span class="w"> </span><span class="n">layout</span><span class="p">)</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">import</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">plotly</span><span class="p">,</span><span class="w"> </span><span class="n">plot_ly</span><span class="p">,</span><span class="w"> </span><span class="n">layout</span><span class="p">)</span><span class="w">
 
 </span><span class="n">Sys.setenv</span><span class="p">(</span><span class="s2">"plotly_username"</span><span class="o">=</span><span class="s2">"UserName"</span><span class="p">)</span><span class="w">
 </span><span class="n">Sys.setenv</span><span class="p">(</span><span class="s2">"plotly_api_key"</span><span class="o">=</span><span class="s2">"ApiKey"</span><span class="p">)</span><span class="w">
@@ -783,19 +783,19 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 <p><a href="https://plot.ly/~AndreasKeller/65/" target="_blank" title="US Treasury Yield Curve" style="display: block; text-align: center;"><img src="https://plot.ly/~AndreasKeller/65.png" alt="US Treasury Yield Curve" style="max-width: 100%;width: 1200px;" width="1200" onerror="this.onerror=null;this.src='https://plot.ly/404.png';" /></a>
     <script data-plotly="AndreasKeller:65" src="https://plot.ly/embed.js" async=""></script></p>
 
-        </li>
-    
-        <li>
-            <h2><a href="/2016/04/05/my-presentation-at-copenhagenr-user-group.html">My Presentation At Copenhagenr User Group</a></h2>
-            <p>Last week I had the pleasure of presenting a side project in front of a bunch of R enthusiast at the monthly <a href="http://www.meetup.com/CopenhagenR-useR-Group/">CopenhagenR useR Group meeting</a>, this time hosted at Microsoft Denmark. I gave a description of the event in a <a href="http://www.akll.io/2016/3/19/speaking-copenhagenr-user-group-revoluti/">previous post</a>. As usual, it was a cool meetup, and I really enjoyed presenting in front of such skilled people. Presenting to a group of peers really gives one the change to “nerd out”, and not dumb down on the technical stuff, which I also relished. The slides for my presentation are available for download <a href="https://dl.dropboxusercontent.com/s/4h9hv9zho9vvqo5/mycroftr.pdf">here</a> and the app I showcased is hosted <a href="http://bit.ly/1NINHEF">here</a>. Below I give a short summary of the presentation.</p>
+        
 
-<h2 id="mycroftr"><code class="highlighter-rouge">mycroftr</code></h2>
+        
+    <h2><a href="/2016/04/05/my-presentation-at-copenhagenr-user-group.html">My Presentation At Copenhagenr User Group</a></h2>
+    <p>Last week I had the pleasure of presenting a side project in front of a bunch of R enthusiast at the monthly <a href="http://www.meetup.com/CopenhagenR-useR-Group/">CopenhagenR useR Group meeting</a>, this time hosted at Microsoft Denmark. I gave a description of the event in a <a href="http://www.akll.io/2016/3/19/speaking-copenhagenr-user-group-revoluti/">previous post</a>. As usual, it was a cool meetup, and I really enjoyed presenting in front of such skilled people. Presenting to a group of peers really gives one the change to “nerd out”, and not dumb down on the technical stuff, which I also relished. The slides for my presentation are available for download <a href="https://dl.dropboxusercontent.com/s/4h9hv9zho9vvqo5/mycroftr.pdf">here</a> and the app I showcased is hosted <a href="http://bit.ly/1NINHEF">here</a>. Below I give a short summary of the presentation.</p>
+
+<h2 id="mycroftr"><code class="language-html highlighter-rouge">mycroftr</code></h2>
 
 <p>In the talk I wanted to highlight some things about R, that I find really cool, and that I thought might be unfamiliar to most people. Of course I had a time constraint, so I also had to stay within what could reasonably be presented in 30 minutes, (I might have ended up going a bit over time). I knew I wanted to talk about a Shiny app project that has been in ongoing development for quite some time, so I ended up picking the two coolest features of this app. These being</p>
 
 <ol>
-  <li>Easy implementation of the JavaScript graphing library <a href="https://www.highcharts.com/">Highcharts</a> in a Shiny app using the package <a href="http://jkunst.com/highcharter/"><code class="highlighter-rouge">highcharter</code></a> by <a href="http://jkunst.com/">Joshua Kunst</a>.</li>
-  <li>How to build a dynamic UI in a <a href="http://shiny.rstudio.com/"><code class="highlighter-rouge">Shiny</code></a> App for easy scaling of input data.</li>
+  <li>Easy implementation of the JavaScript graphing library <a href="https://www.highcharts.com/">Highcharts</a> in a Shiny app using the package <a href="http://jkunst.com/highcharter/"><code class="language-html highlighter-rouge">highcharter</code></a> by <a href="http://jkunst.com/">Joshua Kunst</a>.</li>
+  <li>How to build a dynamic UI in a <a href="http://shiny.rstudio.com/"><code class="language-html highlighter-rouge">Shiny</code></a> App for easy scaling of input data.</li>
 </ol>
 
 <p>The inspiration for the app hails from the financial industry, where the <a href="http://www.bloomberg.com/professional/products-solutions/">Bloomberg Terminal</a> is a popular tool. Using the custom desktop environment <a href="http://www.bloomberg.com/professional/custom-desktop/">Launchpad</a>, it is possible to build a dashboard with important data and select market news. However, not having $24,000 for a yearly license, I thought I would attempt to create my own using data available for free. Also, it would be nice to create something that doesn’t look like an 80s desktop application.</p>
@@ -805,8 +805,8 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 <p>Before I started working on the app, I made the following list of requirements. The app should be driven by free online data such as what is available from</p>
 
 <ul>
-  <li><a href="https://www.quandl.com/"><code class="highlighter-rouge">Quandl</code></a></li>
-  <li><a href="http://www.quantmod.com/"><code class="highlighter-rouge">quantmod</code></a></li>
+  <li><a href="https://www.quandl.com/"><code class="language-html highlighter-rouge">Quandl</code></a></li>
+  <li><a href="http://www.quantmod.com/"><code class="language-html highlighter-rouge">quantmod</code></a></li>
   <li>Various APIs such as the <a href="http://www.dst.dk/da/Statistik/statistikbanken/api">one offered by Statistics Denmark</a>.</li>
 </ul>
 
@@ -815,7 +815,7 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 <ul>
   <li><a href="https://www.highcharts.com/">Highcharts</a></li>
   <li><a href="https://d3js.org/">D3</a></li>
-  <li><a href="https://plot.ly/"><code class="highlighter-rouge">plotly</code></a></li>
+  <li><a href="https://plot.ly/"><code class="language-html highlighter-rouge">plotly</code></a></li>
 </ul>
 
 <p>I should be able to feed the app a list of data, and it should generate the graphs automatically depending on the data it has been fed. The reason for this is</p>
@@ -825,15 +825,15 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
   <li>It should be easy to add data by just appending new data sets, such as a Quandl code, to a static file.</li>
 </ul>
 
-<p>So that is a quick overview of the project. The current status is, that the The “template” ui has been completed. Currently needing to find data and feed it (and add graph types if needed). I have decided to call the app and accompanying package <code class="highlighter-rouge">mycroftr</code>, inspired by the <a href="https://en.wikipedia.org/wiki/Mycroft_Holmes">brother</a> of <a href="https://en.wikipedia.org/wiki/Sherlock_Holmes">one of my favourite characters</a> in literature, of whom it is said in The Adventure of the Bruce-Partington Plans</p>
+<p>So that is a quick overview of the project. The current status is, that the The “template” ui has been completed. Currently needing to find data and feed it (and add graph types if needed). I have decided to call the app and accompanying package <code class="language-html highlighter-rouge">mycroftr</code>, inspired by the <a href="https://en.wikipedia.org/wiki/Mycroft_Holmes">brother</a> of <a href="https://en.wikipedia.org/wiki/Sherlock_Holmes">one of my favourite characters</a> in literature, of whom it is said in The Adventure of the Bruce-Partington Plans</p>
 
 <blockquote>
   <p>He has the tidiest and most orderly brain, with the greatest capacity for storing facts, of any man living. The same great powers which I have turned to the detection of crime he has used for this particular business. The conclusions of every department are passed to him, and he is the central exchange, the clearinghouse, which makes out the balance. All other men are specialists, but his specialism is omniscience. We will suppose that a minister needs information as to a point which involves the Navy, India, Canada and the bimetallic question; he could get his separate advices from various departments upon each, but only Mycroft can focus them all, and say offhand how each factor would affect the other. They began by using him as a short-cut, a convenience; now he has made himself an essential. In that great brain of his everything is pigeon-holed and can be handed out in an instant.</p>
 </blockquote>
 
-<h2 id="highcharter"><code class="highlighter-rouge">highcharter</code></h2>
+<h2 id="highcharter"><code class="language-html highlighter-rouge">highcharter</code></h2>
 
-<p>As mentioned above I chose to integrate the <a href="http://jkunst.com/highcharter/"><code class="highlighter-rouge">highcharter</code></a> package in my app. But why use <a href="https://www.highcharts.com/">Highcharts</a> at all? The reasons I see can be listed as</p>
+<p>As mentioned above I chose to integrate the <a href="http://jkunst.com/highcharter/"><code class="language-html highlighter-rouge">highcharter</code></a> package in my app. But why use <a href="https://www.highcharts.com/">Highcharts</a> at all? The reasons I see can be listed as</p>
 
 <ul>
   <li>The ability to easily create beautiful interactive plots.</li>
@@ -845,12 +845,12 @@ sudo R CMD INSTALL RODBC_1.3-13.tar.gz
 in R</p>
 
 <ul>
-  <li>Use the package <a href="http://rcharts.io/"><code class="highlighter-rouge">rCharts</code></a>, which uses a lattice style approach.
+  <li>Use the package <a href="http://rcharts.io/"><code class="language-html highlighter-rouge">rCharts</code></a>, which uses a lattice style approach.
     <ul>
       <li>Last commit on Github was 2 years ago.</li>
     </ul>
   </li>
-  <li>Use the package <a href="https://github.com/jcizel/highchartR"><code class="highlighter-rouge">highchartR</code></a> of which I’m unfamiliar
+  <li>Use the package <a href="https://github.com/jcizel/highchartR"><code class="language-html highlighter-rouge">highchartR</code></a> of which I’m unfamiliar
     <ul>
       <li>Last commit on Github was 1 year ago.</li>
     </ul>
@@ -858,9 +858,9 @@ in R</p>
   <li>Write a JS wrapper yourself.</li>
 </ul>
 
-<p>I started on the last part, but then <code class="highlighter-rouge">highcharter</code> was <a href="http://jkunst.com/r/presenting-highcharter/">released</a> in January. <code class="highlighter-rouge">highcharter</code> is by far (in my opinion) the best Highcharts implementation so far. The package is essentially a wrapper around Highcharts. All plot types of Highcharts are available, though they might take some work to implement. And best of all it uses a familiar layering approach in building graphs. That is <code class="highlighter-rouge">highcharter</code> is a bit like <a href="http://ggplot2.org/"><code class="highlighter-rouge">ggplot2</code></a>, but without non-standard evaluation (as the author puts it himself. The layering is done using the the <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="highlighter-rouge">magrittr</code></a> pibe. Finally it is possible to build custom themes, which is also very cool. I gave some examples of plots and how to create them, which I have presented below.</p>
+<p>I started on the last part, but then <code class="language-html highlighter-rouge">highcharter</code> was <a href="http://jkunst.com/r/presenting-highcharter/">released</a> in January. <code class="language-html highlighter-rouge">highcharter</code> is by far (in my opinion) the best Highcharts implementation so far. The package is essentially a wrapper around Highcharts. All plot types of Highcharts are available, though they might take some work to implement. And best of all it uses a familiar layering approach in building graphs. That is <code class="language-html highlighter-rouge">highcharter</code> is a bit like <a href="http://ggplot2.org/"><code class="language-html highlighter-rouge">ggplot2</code></a>, but without non-standard evaluation (as the author puts it himself. The layering is done using the the <a href="https://cran.r-project.org/web/packages/magrittr/index.html"><code class="language-html highlighter-rouge">magrittr</code></a> pibe. Finally it is possible to build custom themes, which is also very cool. I gave some examples of plots and how to create them, which I have presented below.</p>
 
-<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Get data</span><span class="w">
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="c1"># Get data</span><span class="w">
 
 </span><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
 </span><span class="n">library</span><span class="p">(</span><span class="n">Quandl</span><span class="p">)</span><span class="w">
@@ -951,19 +951,19 @@ in R</p>
 </span><span class="n">hc_tm</span><span class="w">
 </span></code></pre></div></div>
 
-<p>Every container in the Highcharts API has its own separate <code class="highlighter-rouge">highcharter</code> function. As such, every graph imaginable from the Highcharts website can be recreated in R. Thus it is easy to leverage the extremely powerful chart library that is Highcharts. The charts are easy to implement in a Shiny app through the <code class="highlighter-rouge">renderHighchart()</code> and <code class="highlighter-rouge">highchartOutput()</code> functions.</p>
+<p>Every container in the Highcharts API has its own separate <code class="language-html highlighter-rouge">highcharter</code> function. As such, every graph imaginable from the Highcharts website can be recreated in R. Thus it is easy to leverage the extremely powerful chart library that is Highcharts. The charts are easy to implement in a Shiny app through the <code class="language-html highlighter-rouge">renderHighchart()</code> and <code class="language-html highlighter-rouge">highchartOutput()</code> functions.</p>
 
 <h2 id="dynamic-ui-in-shiny">Dynamic UI in Shiny</h2>
-<p>If you are familiar with writing applications in Shiny, you are familiar with the <code class="highlighter-rouge">ui.R</code> and <code class="highlighter-rouge">server.R</code> approach to building apps.</p>
+<p>If you are familiar with writing applications in Shiny, you are familiar with the <code class="language-html highlighter-rouge">ui.R</code> and <code class="language-html highlighter-rouge">server.R</code> approach to building apps.</p>
 
 <ul>
-  <li><code class="highlighter-rouge">ui.R</code> is where the interface is defined.</li>
-  <li><code class="highlighter-rouge">server.R</code> handles the server side of the app. Usually data gathering, data manipulation, data modeling and data visualisation.</li>
+  <li><code class="language-html highlighter-rouge">ui.R</code> is where the interface is defined.</li>
+  <li><code class="language-html highlighter-rouge">server.R</code> handles the server side of the app. Usually data gathering, data manipulation, data modeling and data visualisation.</li>
 </ul>
 
 <p>This approach is however very static, that is for each plot you write a server side component and a UI component. This makes it difficult to scale when you increase the amount of input data. Below is an example of how you would build an app traditionally using this approach. The example is taken from the <a href="http://shiny.rstudio.com/tutorial/lesson1/">RStudio Shiny tutoriual</a>.</p>
 
-<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
 
 </span><span class="c1"># ui.R</span><span class="w">
 </span><span class="n">shinyUI</span><span class="p">(</span><span class="n">fluidPage</span><span class="p">(</span><span class="w">
@@ -996,17 +996,17 @@ in R</p>
 </span><span class="p">})</span><span class="w">
 </span></code></pre></div></div>
 
-<p>I however want to be able to serve the app a list of data, and have the interface (the plots) adjust accordingly. This is in part inspired by <a href="http://please.hackmyresume.com/">HackMyResume</a>, a project making you able to generate CV from information in a JSON file. So in <code class="highlighter-rouge">Shiny</code> I want to serve the server a list of data, that can be subset through the inputs from the UI, making me able to</p>
+<p>I however want to be able to serve the app a list of data, and have the interface (the plots) adjust accordingly. This is in part inspired by <a href="http://please.hackmyresume.com/">HackMyResume</a>, a project making you able to generate CV from information in a JSON file. So in <code class="language-html highlighter-rouge">Shiny</code> I want to serve the server a list of data, that can be subset through the inputs from the UI, making me able to</p>
 
 <ul>
-  <li>Generate the UI on the server side though the <code class="highlighter-rouge">renderUI()</code> function.</li>
-  <li>Display the UI through the <code class="highlighter-rouge">uiOutput()</code> and leave the rest of the <code class="highlighter-rouge">ui.R</code>
+  <li>Generate the UI on the server side though the <code class="language-html highlighter-rouge">renderUI()</code> function.</li>
+  <li>Display the UI through the <code class="language-html highlighter-rouge">uiOutput()</code> and leave the rest of the <code class="language-html highlighter-rouge">ui.R</code>
 file as a template.</li>
 </ul>
 
 <p>An example of how to implement this is given below. This code is inspired by <a href="https://gist.github.com/wch/5436415/">this gist</a>.</p>
 
-<div class="language-r highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
+<div class="language-r highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">shiny</span><span class="p">)</span><span class="w">
 
 </span><span class="c1"># ui.R</span><span class="w">
 </span><span class="n">shinyUI</span><span class="p">(</span><span class="n">fluidPage</span><span class="p">(</span><span class="w">
@@ -1078,11 +1078,11 @@ file as a template.</li>
 
 <p>This finishes the examples from my presentations. The app is currently in development (and very infrequently updated), but a working version of the app can be found <a href="www.apps.akll.io/shiny/mycroftr">here</a> and the code is available at my <a href="https://github.com/AKLLaursen/mycroftr">Github</a>.</p>
 
-        </li>
-    
-        <li>
-            <h2><a href="/2016/03/19/speaking-at-copenhagenr-user-group.html">Speaking At Copenhagenr User Group</a></h2>
-            <p>On next tuesday, Marts 29, I have been asked to give a small presentation at the <a href="http://www.meetup.com/CopenhagenR-useR-Group/">CopenhagenR useR Group</a> meetup. The description of the event is given <a href="http://www.meetup.com/CopenhagenR-useR-Group/events/229430961/">here</a>, and I have also quoted it below.</p>
+        
+
+        
+    <h2><a href="/2016/03/19/speaking-at-copenhagenr-user-group.html">Speaking At Copenhagenr User Group</a></h2>
+    <p>On next tuesday, Marts 29, I have been asked to give a small presentation at the <a href="http://www.meetup.com/CopenhagenR-useR-Group/">CopenhagenR useR Group</a> meetup. The description of the event is given <a href="http://www.meetup.com/CopenhagenR-useR-Group/events/229430961/">here</a>, and I have also quoted it below.</p>
 
 <blockquote>
   <p>It’s exciting times at Microsoft. The acquisition of Revolution was big news last year. Join CopenhagenR @ Microsoft in Lyngby and and get the latest inside info on what Microsoft plans to do. Søren Johansen, Data Scientist at Revolution Microsoft will take a look back at Machine Learning and give an overview of the future of advanced analytics. Microsoft will also give a quick tour of their new office space.</p>
@@ -1116,11 +1116,11 @@ file as a template.</li>
   </ul>
 </blockquote>
 
-        </li>
-    
-        <li>
-            <h2><a href="/2016/03/10/presenting-r-with-5-examples.html">Presenting R With 5 Examples</a></h2>
-            <p>Yesterday, I finished hosting a short two-day workshop focused on <a href="https://www.r-project.org/">R</a> and <a href="https://www.rstudio.com/">RStudio</a>, which I had prepared for my coworkers at my <a href="http://www.nationalbanken.dk/en/about_danmarks_nationalbank/organisation/Pages/Statistics.aspx">job</a>. It was a great experience with very positive feedback from my colleagues, and something I look forward to repeating.</p>
+        
+
+        
+    <h2><a href="/2016/03/10/presenting-r-with-5-examples.html">Presenting R With 5 Examples</a></h2>
+    <p>Yesterday, I finished hosting a short two-day workshop focused on <a href="https://www.r-project.org/">R</a> and <a href="https://www.rstudio.com/">RStudio</a>, which I had prepared for my coworkers at my <a href="http://www.nationalbanken.dk/en/about_danmarks_nationalbank/organisation/Pages/Statistics.aspx">job</a>. It was a great experience with very positive feedback from my colleagues, and something I look forward to repeating.</p>
 
 <p>It is no secret that I am very much a proponent of using R, not only for doing statistical analysis, but for doing everything in, what one could label the statistics “stack.” The statistics stack being a representation of everything a skilled statistician or data scientist needs to be able to do. In my mind, one can partition the statistics stack into:</p>
 
@@ -1136,7 +1136,7 @@ file as a template.</li>
 
 <p>For showcasing how to read data into R, I call two time series containing the daily historical open, high, low and close prices as well as the volume of the Apple and Microsoft stocks. I do this using the <a href="https://www.quandl.com/tools/r">Quandl package</a>, and do a bit of fiddling with the data using <a href="https://github.com/hadley/dplyr">dplyr</a>. The code is given below.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
 </span><span class="n">library</span><span class="p">(</span><span class="n">Quandl</span><span class="p">)</span><span class="w">
 
 </span><span class="n">data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">list</span><span class="p">(</span><span class="w">
@@ -1154,7 +1154,7 @@ file as a template.</li>
 
 <p>Here the sharp minded reader will notice that I have employed the <a href="https://cran.r-project.org/web/packages/magrittr/index.html">magrittr</a> forward pibe operator as well. The output of running the code is displayed below.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: local data frame [6 x 7]
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="syntax"><code>Source: local data frame [6 x 7]
 
         Date  Open    High   Low Close   Volume      Name
       (date) (dbl)   (dbl) (dbl) (dbl)    (dbl)     (chr)
@@ -1168,7 +1168,7 @@ file as a template.</li>
 
 <p>To showcase data munging, I give a small example of how descriptive statistics can be computed using <a href="https://github.com/hadley/dplyr">dplyr</a>	.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">moments</span><span class="p">)</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">moments</span><span class="p">)</span><span class="w">
 
 </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
   </span><span class="n">group_by</span><span class="p">(</span><span class="n">Name</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
@@ -1183,7 +1183,7 @@ file as a template.</li>
 
 <p>Yielding the output given below.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Source: local data frame [2 x 7]
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="syntax"><code>Source: local data frame [2 x 7]
 
        Name     Mean StandardDeviation Maximum Minimum  Skewness kurtosis
       (chr)    (dbl)             (dbl)   (dbl)   (dbl)     (dbl)    (dbl)
@@ -1193,7 +1193,7 @@ file as a template.</li>
 
 <p>For modeling, I choose to give the simplest example possible: How to run a linear regression model in R. Here I also used <a href="http://vita.had.co.nz/papers/tidy-data.html">tidyr</a> to show how to pivot data in R.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">tidyr</span><span class="p">)</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">tidyr</span><span class="p">)</span><span class="w">
 
 </span><span class="n">data</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
   </span><span class="n">select</span><span class="p">(</span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Close</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">
@@ -1203,9 +1203,9 @@ file as a template.</li>
   </span><span class="n">summary</span><span class="p">()</span><span class="w">
 </span></code></pre></div></div>
 
-<p>Of course this model makes little sense considering the data, but that is not the point. Here <code class="highlighter-rouge">summary()</code> exemplifies how easy it is to obtain the standard statistics, you would want from a model fit, as seen from the output below.</p>
+<p>Of course this model makes little sense considering the data, but that is not the point. Here <code class="language-html highlighter-rouge">summary()</code> exemplifies how easy it is to obtain the standard statistics, you would want from a model fit, as seen from the output below.</p>
 
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Call:
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="syntax"><code>Call:
 lm(formula = Apple ~ Microsoft, data = .)
 
 Residuals:
@@ -1214,19 +1214,19 @@ Residuals:
 
 Coefficients:
              Estimate Std. Error t value Pr(&gt;|t|)    
-(Intercept) 226.43396    3.38662   66.86   &lt;2e-16 ***
-Microsoft    -1.83794    0.04811  -38.20   &lt;2e-16 ***
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+(Intercept) 226.43396    3.38662   66.86   <span class="nt">&lt;2e-16</span> <span class="na">***</span>
+<span class="na">Microsoft</span>    <span class="na">-1</span><span class="err">.</span><span class="na">83794</span>    <span class="na">0</span><span class="err">.</span><span class="na">04811</span>  <span class="na">-38</span><span class="err">.</span><span class="na">20</span>   <span class="err">&lt;</span><span class="na">2e-16</span> <span class="na">***</span>
+<span class="na">---</span>
+<span class="na">Signif</span><span class="err">.</span> <span class="na">codes:</span>  <span class="na">0</span> <span class="err">‘</span><span class="na">***</span><span class="err">’</span> <span class="na">0</span><span class="err">.</span><span class="na">001</span> <span class="err">‘</span><span class="na">**</span><span class="err">’</span> <span class="na">0</span><span class="err">.</span><span class="na">01</span> <span class="err">‘</span><span class="na">*</span><span class="err">’</span> <span class="na">0</span><span class="err">.</span><span class="na">05</span> <span class="err">‘.’</span> <span class="na">0</span><span class="err">.</span><span class="na">1</span> <span class="err">‘</span> <span class="err">’</span> <span class="na">1</span>
 
-Residual standard error: 134.6 on 6047 degrees of freedom
-Multiple R-squared:  0.1944,	Adjusted R-squared:  0.1943 
-F-statistic:  1460 on 1 and 6047 DF,  p-value: &lt; 2.2e-16
+<span class="na">Residual</span> <span class="na">standard</span> <span class="na">error:</span> <span class="na">134</span><span class="err">.</span><span class="na">6</span> <span class="na">on</span> <span class="na">6047</span> <span class="na">degrees</span> <span class="na">of</span> <span class="na">freedom</span>
+<span class="na">Multiple</span> <span class="na">R-squared:</span>  <span class="na">0</span><span class="err">.</span><span class="na">1944</span><span class="err">,</span>	<span class="na">Adjusted</span> <span class="na">R-squared:</span>  <span class="na">0</span><span class="err">.</span><span class="na">1943</span> 
+<span class="na">F-statistic:</span>  <span class="na">1460</span> <span class="na">on</span> <span class="na">1</span> <span class="na">and</span> <span class="na">6047</span> <span class="na">DF</span><span class="err">,</span>  <span class="na">p-value:</span> <span class="err">&lt;</span> <span class="na">2</span><span class="err">.</span><span class="na">2e-16</span>
 </code></pre></div></div>
 
 <p>For visualisation of data, I choose the simplest example possible using the definite graphics library in R, <a href="http://ggplot2.org/">ggplot2</a>.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">ggplot2</span><span class="p">)</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">ggplot2</span><span class="p">)</span><span class="w">
 
 </span><span class="n">qplot</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Date</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Close</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">color</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">geom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"line"</span><span class="p">)</span><span class="w">
 </span></code></pre></div></div>
@@ -1237,7 +1237,7 @@ F-statistic:  1460 on 1 and 6047 DF,  p-value: &lt; 2.2e-16
 
 <p>Finally, I turned to sharing the analysis of the data, first by dynamic reporting using <a href="http://rmarkdown.rstudio.com/">rmarkdown</a>. Here I show the R Markdown document.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">---</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="o">---</span><span class="w">
 </span><span class="n">title</span><span class="o">:</span><span class="w"> </span><span class="s2">"Example of Dynamic Reporting"</span><span class="w">
 </span><span class="n">output</span><span class="o">:</span><span class="w">
   </span><span class="n">pdf_document</span><span class="w">
@@ -1259,7 +1259,7 @@ qplot(x = Date, y = Close, data = data,
 
 <p>I also present the call of the rendering function.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">rmarkdown</span><span class="p">)</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">library</span><span class="p">(</span><span class="n">rmarkdown</span><span class="p">)</span><span class="w">
 
 </span><span class="n">render</span><span class="p">(</span><span class="s2">"stock-example.rmd"</span><span class="p">)</span><span class="w">
 </span></code></pre></div></div>
@@ -1270,7 +1270,7 @@ qplot(x = Date, y = Close, data = data,
 
 <p>Instead I present the ui.R file.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">dashboardPage</span><span class="p">(</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">dashboardPage</span><span class="p">(</span><span class="w">
   </span><span class="n">dashboardHeader</span><span class="p">(</span><span class="n">title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Aktie app"</span><span class="p">),</span><span class="w">
   </span><span class="n">dashboardSidebar</span><span class="p">(</span><span class="w">
     </span><span class="n">sidebarMenu</span><span class="p">(</span><span class="w">
@@ -1330,7 +1330,7 @@ qplot(x = Date, y = Close, data = data,
 
 <p>And the server.R file.</p>
 
-<div class="language-R highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">shinyServer</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+<div class="language-R highlighter-rouge"><div class="highlight"><pre class="syntax"><code><span class="n">shinyServer</span><span class="p">(</span><span class="k">function</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
   
   </span><span class="n">data</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">reactive</span><span class="p">({</span><span class="w">
     </span><span class="n">Quandl</span><span class="p">(</span><span class="n">paste0</span><span class="p">(</span><span class="s2">"WIKI/"</span><span class="p">,</span><span class="w"> </span><span class="n">input</span><span class="o">$</span><span class="n">in_symbol</span><span class="p">),</span><span class="w">
@@ -1363,11 +1363,11 @@ qplot(x = Date, y = Close, data = data,
 
 <p>Overall I am very happy with these small examples, and the fact that it only took very limited time to make.</p>
 
-        </li>
-    
-        <li>
-            <h2><a href="/2016/02/19/a-start-of-something.html">A Start Of Something</a></h2>
-            <p>Greetings.</p>
+        
+
+        
+    <h2><a href="/2016/02/19/a-start-of-something.html">A Start Of Something</a></h2>
+    <p>Greetings.</p>
 
 <p>Welcome to what is to be my online home. Having finished <a href="http://www.econ.au.dk">university</a> and started my first (post academia) full-time <a href="https://www.nationalbanken.dk/en/about_danmarks_nationalbank/organisation/Pages/Statistics.aspx">job</a>, I decided to make a place to document the projects on which I will spend some of my newly found spare time.</p>
 
@@ -1422,12 +1422,12 @@ qplot(x = Date, y = Close, data = data,
 
 <p>Being close to finishing the site, my head is already brimming over with ideas of what I want to next, and I cannot wait to get started. It is time to step into the road, let go of my feet and see where I’m swept off to.</p>
 
-        </li>
-    
-</ul>
+        
+
+
                     </div>
 
-                    <div class="col-lg-3 col-md-offset-1 blog-sidebar">
+                    <div class="offset-sm-1 col-sm-3 blog-sidebar">
                         <div class="sidebar-module sidebar-module-inset about">
                             <h4>Introduction</h4>
                             <p>I am <a href="/about/">Andreas</a>: Machine learning enthusiast, MLOps devotee, tech addict and all-round geek.</p>

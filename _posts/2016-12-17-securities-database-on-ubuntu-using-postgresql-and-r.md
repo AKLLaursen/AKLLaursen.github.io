@@ -12,14 +12,14 @@ As for the specific database, a number of options is available, but really the c
 
 The database will be hosted on a [Ubuntu Server 14.04](http://www.ubuntu.com/server) platform. I have still to migrate the server to 16.04, even though Digital Ocean has made it available. Postgresql is ridiculously easy to set up. To install SSH into the server and run.
 
-```
+```bash
 sudo apt-get update
 sudo apt-get install postgresql postgresql-contrib
 ```
 
 The [contrib package](http://www.postgresql.org/docs/9.1/static/contrib.html) provides porting tools, analysis utilities, and plug-in features that are not part of the core PostgreSQL system. As part of the installation, a user account called `postgres` is created. This user can be used to check that Postgres is installed and working as intended.
 
-```
+```bash
 sudo -i -u postgres
 psql
 
@@ -31,7 +31,7 @@ Type "help" for help.
 
 Next up is creating a new role. One might want to associate an existing account with the given role, or one might want to create a new account. At any rate the role is assigned by entering the following using the `postgres` account.
 
-```
+```bash
 createuser --interactive
 Enter name of role to add: andreas   
 Shall the new role be a superuser? (y/n) y
@@ -39,7 +39,7 @@ Shall the new role be a superuser? (y/n) y
 
 Here I choose to be a superuser in order to have all privileges. Each user must also be associated with a database of the same name. It can be created by entering.
 
-```
+```postgres
 createdb andreas
 ```
 
@@ -47,7 +47,7 @@ Thus the `psql` command can be invoked as the given user (in my case andreas). T
 
 We can then create and access the actual securities database by running the following commands in the terminal. The standard in postgreql is to use all lower-case names, however due to problems with RODBC, I had to have the database name be capitalized. I have no idea as to why.
 
-```
+```postgres
 createdb Securities
 psql Securities
 ```
@@ -61,13 +61,13 @@ Next, it is time to set up the database. In this post I will cover how to set up
 
 First I create an equity schema.
 
-```SQL
+```sql
 create schema equities;
 ```
 
 And then I build the tables, starting with the exchange table and then building the data_provider, symbol and daily_price tables.
 
-```SQL
+```sql
 create table equities.exchange (
   id_exchange serial not null primary key,
   abbreviation varchar(32) not null,
@@ -124,7 +124,7 @@ Note the use of foreign keys employed to connect dimensions to the fact table th
 
 In R it is easy to connect to a variety of relational databases using the [ODBC](https://en.wikipedia.org/wiki/Open_Database_Connectivity) database interface [RODBC](https://cran.r-project.org/web/packages/RODBC/index.html). However, setting up ODBC on a Ubuntu server is unfortunately quite a hassle. First we need to install the unixodbc and odbc-postgresql packages, which installs an open source implementation of the ODBC API and the official PostgreSQL ODBC driver. As the versions of these packages hosted in Ubuntu's package manager were either outdated or bugged, I found that I had to build both packages from source in order to make it work. A quick overview of how to do that is given below, starting with unixodbc.
 
-```
+```bash
 wget ftp://ftp.unixodbc.org/pub/unixODBC/unixODBC-2.3.4.tar.gz
 tar xf unixODBC-2.3.4.tar.gz
 cd unixODBC-2.3.4
@@ -134,13 +134,13 @@ sudo make install
 ```
 Now the files have been installed in a local library to we need to add `/usr/local/lib` to the end of the `/etc/ld.so.conf` file and run:
 
-```
+```bash
 sudo ldconfig
 ```
 
 Next we build the odbc-postgresql package in the same way.
 
-```
+```bash
 wget https://ftp.postgresql.org/pub/source/v9.6.1/postgresql-9.6.1.tar.gz
 tar xf postgresql-9.6.1.tar.gz
 cd postgresql-9.6.1
@@ -151,7 +151,7 @@ sudo make install
 
 We can then setup the connection by editing a few files. Set up the driver in `/usr/local/etc/odbcinst.ini`.
 
-```
+```bash
 [PostgreSQL]
 Description     = PostgreSQL ODBC driver (Unicode 9.5)
 Driver          = /usr/local/lib/psqlodbcw.so
@@ -162,7 +162,7 @@ UsageCount      = 1
 
 Next set up the database connections. In our case, we add the following to the `/usr/local/etc/odbc.ini` file.
 
-```
+```bash
 [ODBC Data Sources]
 securities = The securities database
 
@@ -179,13 +179,13 @@ Debug       = 1
 
 Here the username and password should of course reflect the database user and password. We can then test the connection by running.
 
-```
+```bash
 isql -v securities
 ```
 
 Which if everything is set up correct returns the following output.
 
-```
+```bash
 +---------------------------------------+
 | Connected!                            |
 |                                       |
@@ -203,7 +203,7 @@ We are now ready to use the ODBC driver to interface between R and PostgreSQL. W
 
 First we download the source package and set a path such that the compiler uses the unixODBC library instead of the iODBC library. Next we install the package.
 
-```
+```bash
 wget cran.r-project.org/src/contrib/RODBC_1.3-14.tar.gz
 DYLD_LIBRARY_PATH=/usr/local/lib
 sudo R CMD INSTALL RODBC_1.3-13.tar.gz
@@ -218,7 +218,7 @@ odbcDataSources()
 
 Which returns the output:
 
-```
+```bash
   securities
 "PostgreSQL"
 ```

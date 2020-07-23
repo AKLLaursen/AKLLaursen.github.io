@@ -1,6 +1,7 @@
 body {
     font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
     font-weight: 300;
+    font-size: 14px;
 }
   
 img {
@@ -15,7 +16,35 @@ img {
     border-bottom-color: #4B88A2;
     background-color: transparent !important;
 }
-  
+
+h2 {
+    font-size: 30px;
+}
+
+h4 {
+    font-size: 18px;
+}
+
+h5 {
+    font-size: 14px;
+}
+
+h6 {
+    font-size: 14px;
+}
+
+a {
+    color: #337ab7;
+}
+
+a:hover {
+    color: #23527c;
+}
+
+.nav>li>a {
+    padding: 10px 15px;
+}
+
 #headline {
     color: #4B88A2;
 }
@@ -31,12 +60,14 @@ img {
   
 .jumbotron h1 {
     text-align: center;
+    font-size: 63px;
 }
   
 .jumbotron p {
     text-align: center;
+    font-size: 21px;
 }
-  
+
 ul.nav li a, ul.nav li a:visited {
       color: black !important;
 }
